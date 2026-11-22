@@ -8,11 +8,32 @@ spring:
       chat:
         model: claude-opus-5-5
         max-tokens: 64000
+    session:
+      repository:
+        jdbc:
+          # Creates the AI_SESSION* tables on startup if they are missing.
+          initialize-schema: always
+  datasource:
+    # Conversations are kept in a local H2 file, relative to the working directory.
+    url: jdbc:h2:file:./data/agent
+    username: sa
+    password:
 
 server:
   port: 8080
 
 agent:
+  # Owner of every conversation: there is no login yet.
+  user: local
   system-prompt: >
     You are a helpful assistant. Answer clearly and concisely,
     in the language the user writes in.
+    In a long conversation the oldest messages are replaced by a summary:
+    use the conversation_search tool when you need a detail that is no longer
+    in your context.
+  compaction:
+    # Estimated tokens of the conversation sent to the model at which the
+    # oldest turns are summarized...
+    trigger-tokens: 60000
+    # ...keeping this much of the most recent conversation verbatim.
+    keep-tokens: 20000

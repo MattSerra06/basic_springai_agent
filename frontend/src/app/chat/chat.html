@@ -1,37 +1,69 @@
-<header class="top">
-  <h1>Agent</h1>
-  <p>Sans mémoire : chaque message est traité indépendamment.</p>
-</header>
+<app-session-list
+  class="sidebar"
+  [class.open]="menuOpen()"
+  [sessions]="store.sessions()"
+  [activeId]="store.activeId()"
+  (remove)="remove($event)"
+/>
+@if (menuOpen()) {
+  <button
+    type="button"
+    class="backdrop"
+    aria-label="Fermer le menu"
+    (click)="menuOpen.set(false)"
+  ></button>
+}
 
-<main #thread class="thread" aria-live="polite">
-  @for (message of messages(); track $index) {
-    <article class="message" [class]="message.role" [class.error]="message.error">
-      <span class="who">{{ message.role === 'user' ? 'Vous' : 'Claude' }}</span>
-      @if (message.content) {
-        <p>{{ message.content }}</p>
-      } @else if (streaming() && $last) {
-        <p class="pending" aria-label="Réponse en cours"><i></i><i></i><i></i></p>
-      } @else {
-        <p class="muted">Réponse interrompue.</p>
+<section class="conversation">
+  <header class="top">
+    <button
+      type="button"
+      class="menu"
+      aria-label="Conversations"
+      [attr.aria-expanded]="menuOpen()"
+      (click)="menuOpen.set(!menuOpen())"
+    >
+      ☰
+    </button>
+    <h1>{{ title() }}</h1>
+  </header>
+
+  <main #thread class="thread" aria-live="polite">
+    @if (store.problem(); as problem) {
+      <p class="problem" role="alert">{{ problem }}</p>
+    }
+    @for (message of store.messages(); track $index) {
+      <article class="message" [class]="message.role" [class.error]="message.error">
+        <span class="who">{{ message.role === 'user' ? 'Vous' : 'Claude' }}</span>
+        @if (message.content) {
+          <p>{{ message.content }}</p>
+        } @else if (store.streaming() && $last) {
+          <p class="pending" aria-label="Réponse en cours"><i></i><i></i><i></i></p>
+        }
+        @if (message.interrupted) {
+          <p class="note">Réponse interrompue.</p>
+        }
+      </article>
+    } @empty {
+      @if (!store.loading() && !store.problem()) {
+        <p class="empty">Posez une question pour démarrer.</p>
       }
-    </article>
-  } @empty {
-    <p class="empty">Posez une question pour démarrer.</p>
-  }
-</main>
+    }
+  </main>
 
-<form class="composer" (submit)="$event.preventDefault(); send()">
-  <textarea
-    rows="1"
-    placeholder="Écrivez votre message…"
-    aria-label="Message"
-    [value]="draft()"
-    (input)="draft.set($any($event.target).value)"
-    (keydown)="onKeydown($event)"
-  ></textarea>
-  @if (streaming()) {
-    <button type="button" class="stop" (click)="stop()">Arrêter</button>
-  } @else {
-    <button type="submit" [disabled]="!draft().trim()">Envoyer</button>
-  }
-</form>
+  <form class="composer" (submit)="$event.preventDefault(); send()">
+    <textarea
+      rows="1"
+      placeholder="Écrivez votre message…"
+      aria-label="Message"
+      [value]="draft()"
+      (input)="draft.set($any($event.target).value)"
+      (keydown)="onKeydown($event)"
+    ></textarea>
+    @if (store.streaming()) {
+      <button type="button" class="stop" (click)="store.stop()">Arrêter</button>
+    } @else {
+      <button type="submit" [disabled]="!draft().trim()">Envoyer</button>
+    }
+  </form>
+</section>

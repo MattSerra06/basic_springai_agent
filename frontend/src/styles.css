@@ -2,6 +2,7 @@
   color-scheme: light dark;
   --bg: light-dark(#fbfaf8, #17171a);
   --surface: light-dark(#f0eee9, #232327);
+  --hover: light-dark(#e4e1d9, #2f2f35);
   --line: light-dark(#dedbd3, #35353b);
   --text: light-dark(#1d1c1a, #ececee);
   --muted: light-dark(#6d6a63, #9b9ba3);

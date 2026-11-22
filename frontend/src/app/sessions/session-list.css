@@ -1,0 +1,99 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 1rem 0.75rem;
+  box-sizing: border-box;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+.new {
+  display: block;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--bg);
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+nav {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+.none {
+  margin: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  border-radius: 0.625rem;
+}
+.item:hover,
+.item.active {
+  background: var(--hover);
+}
+.item a {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.25rem 0.5rem 0.75rem;
+  color: inherit;
+  text-decoration: none;
+}
+.title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9375rem;
+}
+.active .title {
+  font-weight: 600;
+}
+time {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.item button {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  margin-right: 0.25rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.125rem;
+  cursor: pointer;
+  opacity: 0;
+}
+.item:hover button,
+.item:focus-within button {
+  opacity: 1;
+}
+.item button:hover {
+  color: var(--danger);
+}
+/* No hover on touch screens: keep the button visible. */
+@media (hover: none) {
+  .item button {
+    opacity: 1;
+  }
+}
+
+.new:focus-visible,
+.item a:focus-visible,
+.item button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

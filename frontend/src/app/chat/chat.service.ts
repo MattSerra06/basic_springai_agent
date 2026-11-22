@@ -1,23 +1,67 @@
 import { Injectable } from '@angular/core';
 
-/**
- * Talks to the Spring backend. The endpoint is a POST that answers with
- * Server-Sent Events, so it is read with fetch (EventSource is GET-only).
- */
+export interface Session {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+
+export interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  /** The reply was cut short by a stop. */
+  interrupted?: boolean;
+  /** Shown in place of a reply that failed; never stored. */
+  error?: boolean;
+}
+
+/** What the backend streams for one turn, in order: session?, text*, done. */
+export type TurnEvent =
+  | { type: 'session'; session: Session }
+  | { type: 'text'; text: string }
+  | { type: 'done'; interrupted: boolean };
+
+/** The backend's REST and streaming API. */
 @Injectable({ providedIn: 'root' })
 export class ChatService {
-  private readonly url = '/api/chat/stream';
+  sessions(): Promise<Session[]> {
+    return json(fetch('/api/sessions'));
+  }
 
-  /** Yields the answer's text deltas as they arrive. */
-  async *stream(message: string, signal?: AbortSignal): AsyncGenerator<string> {
-    const response = await fetch(this.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-      body: JSON.stringify({ message }),
-      signal,
-    });
-    if (!response.ok || !response.body) {
-      throw new Error(`Le serveur a répondu ${response.status}.`);
+  messages(sessionId: string): Promise<Message[]> {
+    return json(fetch(`/api/sessions/${encodeURIComponent(sessionId)}/messages`));
+  }
+
+  async remove(sessionId: string): Promise<void> {
+    ok(await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' }));
+  }
+
+  /** Asks the backend to stop the reply being generated for the session. */
+  async interrupt(sessionId: string): Promise<void> {
+    ok(await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/interrupt`, { method: 'POST' }));
+  }
+
+  /**
+   * Sends a message and yields the turn's events as they arrive. Without a session id
+   * the backend starts a new conversation and names it in a first `session` event.
+   * The endpoint is a POST that answers with Server-Sent Events, so it is read with
+   * fetch (EventSource is GET-only).
+   */
+  async *stream(
+    message: string,
+    sessionId: string | null,
+    signal?: AbortSignal,
+  ): AsyncGenerator<TurnEvent> {
+    const response = ok(
+      await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+        body: JSON.stringify({ sessionId, message }),
+        signal,
+      }),
+    );
+    if (!response.body) {
+      throw new Error('Réponse vide du serveur.');
     }
 
     const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -32,33 +76,50 @@ export class ChatService {
       // Events are separated by a blank line; keep any trailing partial event.
       let end: number;
       while ((end = buffer.indexOf('\n\n')) !== -1) {
-        const text = readEvent(buffer.slice(0, end));
+        const event = readEvent(buffer.slice(0, end));
         buffer = buffer.slice(end + 2);
-        if (text) {
-          yield text;
+        if (event) {
+          yield event;
         }
       }
     }
   }
 }
 
-function readEvent(raw: string): string {
-  let event = 'message';
+function ok(response: Response): Response {
+  if (!response.ok) {
+    throw new Error(`Le serveur a répondu ${response.status}.`);
+  }
+  return response;
+}
+
+async function json<T>(response: Promise<Response>): Promise<T> {
+  return (await ok(await response).json()) as T;
+}
+
+function readEvent(raw: string): TurnEvent | null {
+  let name = 'message';
   const data: string[] = [];
   for (const line of raw.split('\n')) {
     if (line.startsWith('event:')) {
-      event = line.slice(6).trim();
+      name = line.slice(6).trim();
     } else if (line.startsWith('data:')) {
       data.push(line.slice(5).replace(/^ /, ''));
     }
   }
   if (data.length === 0) {
-    return '';
+    return null;
   }
 
-  const payload = JSON.parse(data.join('\n')) as { text?: string; message?: string };
-  if (event === 'error') {
-    throw new Error(payload.message ?? 'Erreur inconnue.');
+  const payload = JSON.parse(data.join('\n'));
+  switch (name) {
+    case 'session':
+      return { type: 'session', session: payload as Session };
+    case 'done':
+      return { type: 'done', interrupted: payload.interrupted === true };
+    case 'error':
+      throw new Error(payload.message ?? 'Erreur inconnue.');
+    default:
+      return payload.text ? { type: 'text', text: payload.text } : null;
   }
-  return payload.text ?? '';
 }

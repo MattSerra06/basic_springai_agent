@@ -3,83 +3,86 @@ import {
   Component,
   ElementRef,
   afterRenderEffect,
+  computed,
+  effect,
   inject,
+  input,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
-import { ChatService } from './chat.service';
+import { Router } from '@angular/router';
+import { SessionList } from '../sessions/session-list';
+import { ChatStore } from './chat.store';
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  error?: boolean;
-}
-
+/** The page: the conversations on the left, the open one on the right. */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [SessionList],
   selector: 'app-chat',
   styleUrl: './chat.css',
   templateUrl: './chat.html',
 })
 export class Chat {
-  private readonly chat = inject(ChatService);
+  protected readonly store = inject(ChatStore);
+  private readonly router = inject(Router);
   private readonly thread = viewChild.required<ElementRef<HTMLElement>>('thread');
-  private abort?: AbortController;
 
-  protected readonly messages = signal<Message[]>([]);
+  /** The session id of the URL (/c/:id); absent for a new conversation. */
+  readonly id = input<string>();
+
   protected readonly draft = signal('');
-  protected readonly streaming = signal(false);
+  protected readonly menuOpen = signal(false);
+  protected readonly title = computed(() => {
+    const id = this.store.activeId();
+    const session = this.store.sessions().find((candidate) => candidate.id === id);
+    return session?.title ?? 'Nouvelle conversation';
+  });
 
   constructor() {
+    void this.store.loadSessions();
+
+    // The URL names the conversation to show.
+    effect(() => {
+      const id = this.id() ?? null;
+      untracked(async () => {
+        this.menuOpen.set(false);
+        if (!(await this.store.open(id))) {
+          void this.router.navigate(['/'], { replaceUrl: true });
+        }
+      });
+    });
+
     // Keep the newest text in view while the answer grows.
     afterRenderEffect(() => {
-      this.messages();
+      this.store.messages();
       const el = this.thread().nativeElement;
       el.scrollTop = el.scrollHeight;
     });
   }
 
-  protected async send(): Promise<void> {
-    const text = this.draft().trim();
-    if (!text || this.streaming()) {
+  protected send(): void {
+    const text = this.draft();
+    if (!text.trim() || this.store.streaming()) {
       return;
     }
-
     this.draft.set('');
-    this.messages.update((all) => [
-      ...all,
-      { role: 'user', content: text },
-      { role: 'assistant', content: '' },
-    ]);
-    this.streaming.set(true);
-    this.abort = new AbortController();
-
-    try {
-      for await (const delta of this.chat.stream(text, this.abort.signal)) {
-        this.updateAnswer((answer) => ({ ...answer, content: answer.content + delta }));
-      }
-    } catch (error) {
-      if (!this.abort.signal.aborted) {
-        const reason = error instanceof Error ? error.message : String(error);
-        this.updateAnswer((answer) => ({ ...answer, content: reason, error: true }));
-      }
-    } finally {
-      this.streaming.set(false);
-    }
-  }
-
-  protected stop(): void {
-    this.abort?.abort();
+    // A first message creates the session: give it its URL as soon as it has one.
+    void this.store.send(text, (session) => this.router.navigate(['/c', session.id]));
   }
 
   protected onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
-      void this.send();
+      this.send();
     }
   }
 
-  private updateAnswer(change: (answer: Message) => Message): void {
-    this.messages.update((all) => [...all.slice(0, -1), change(all[all.length - 1])]);
+  protected async remove(sessionId: string): Promise<void> {
+    const wasOpen = this.store.activeId() === sessionId;
+    await this.store.remove(sessionId);
+    if (wasOpen && this.store.activeId() === null) {
+      void this.router.navigate(['/']);
+    }
   }
 }

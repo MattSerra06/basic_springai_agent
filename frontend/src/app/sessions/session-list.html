@@ -1,0 +1,26 @@
+<a class="new" routerLink="/">+ Nouvelle conversation</a>
+
+<nav aria-label="Conversations précédentes">
+  @for (session of sessions(); track session.id) {
+    <div class="item" [class.active]="session.id === activeId()">
+      <a
+        [routerLink]="['/c', session.id]"
+        [attr.aria-current]="session.id === activeId() ? 'page' : null"
+      >
+        <span class="title">{{ session.title }}</span>
+        <time [attr.datetime]="session.createdAt">{{
+          session.createdAt | date: 'd MMM, HH:mm'
+        }}</time>
+      </a>
+      <button
+        type="button"
+        [attr.aria-label]="'Supprimer « ' + session.title + ' »'"
+        (click)="confirmRemove(session)"
+      >
+        ×
+      </button>
+    </div>
+  } @empty {
+    <p class="none">Aucune conversation pour l'instant.</p>
+  }
+</nav>
