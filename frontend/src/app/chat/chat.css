@@ -27,15 +27,18 @@
   min-height: 0;
 }
 
-/* The top line, level with the head of the panel. Only what is not the conversation. */
+/*
+ * The top line, level with the head of the panel. Only what is not the conversation: it
+ * spans the page, so that the toggle sits in its corner however wide the window is.
+ */
 .bar {
   flex: none;
   display: flex;
   align-items: center;
   min-height: var(--bar);
-  margin-inline: var(--inset);
+  margin-inline: var(--gutter);
 }
-/* The words of the toggle end on the right edge of the column. */
+/* The words of the toggle end on the right margin of the page. */
 .bar app-theme-toggle {
   margin-left: auto;
   margin-right: calc(-1 * var(--space-2));
