@@ -10,6 +10,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
@@ -32,6 +33,7 @@ class ChatControllerTest {
 
     @TestConfiguration
     @EnableConfigurationProperties(AgentProperties.class)
+    @Import(RunOptions.class)
     static class Config {
 
         @Bean
@@ -51,7 +53,7 @@ class ChatControllerTest {
 
     @Test
     void acceptsAMessageAndNamesTheRunToReadTheReplyFrom() throws Exception {
-        given(chatService.start(null, "Hi")).willReturn(new ChatService.RunStarted("r1",
+        given(chatService.start(null, "Hi", null, null)).willReturn(new ChatService.RunStarted("r1",
                 new SessionView("s1", "Hi", Instant.parse("2026-01-01T00:00:00Z"))));
 
         mockMvc.perform(post("/api/runs").contentType(MediaType.APPLICATION_JSON).content("{\"message\":\"Hi\"}"))
@@ -62,6 +64,30 @@ class ChatControllerTest {
     }
 
     @Test
+    void passesTheChosenModelAndReasoningEffortOn() throws Exception {
+        given(chatService.start("s1", "Hi", "gpt-6.2-astra", "high")).willReturn(new ChatService.RunStarted("r1",
+                new SessionView("s1", "Hi", Instant.parse("2026-01-01T00:00:00Z"))));
+
+        mockMvc.perform(post("/api/runs").contentType(MediaType.APPLICATION_JSON).content("""
+                        {"sessionId":"s1","message":"Hi","model":"gpt-6.2-astra","reasoningEffort":"high"}"""))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.runId").value("r1"));
+    }
+
+    @Test
+    void listsTheModelsAndReasoningEffortsOnOffer() throws Exception {
+        mockMvc.perform(get("/api/runs/options"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.models[0].id").value("gpt-6.2-sol"))
+                .andExpect(jsonPath("$.models[0].label").value("GPT-6.2 Sol"))
+                .andExpect(jsonPath("$.models[1].id").value("gpt-6.2-astra"))
+                .andExpect(jsonPath("$.defaultModel").value("gpt-6.2-sol"))
+                .andExpect(jsonPath("$.reasoningEfforts[0]").value("low"))
+                .andExpect(jsonPath("$.reasoningEfforts[3]").value("xhigh"))
+                .andExpect(jsonPath("$.defaultReasoningEffort").value("medium"));
+    }
+
+    @Test
     void rejectsBlankMessage() throws Exception {
         mockMvc.perform(post("/api/runs").contentType(MediaType.APPLICATION_JSON).content("{\"message\":\"  \"}"))
                 .andExpect(status().isBadRequest());
@@ -69,7 +95,7 @@ class ChatControllerTest {
 
     @Test
     void answersConflictWhenTheSessionIsStillReplying() throws Exception {
-        given(chatService.start("s1", "Hi")).willThrow(new ResponseStatusException(HttpStatus.CONFLICT));
+        given(chatService.start("s1", "Hi", null, null)).willThrow(new ResponseStatusException(HttpStatus.CONFLICT));
 
         mockMvc.perform(post("/api/runs").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"sessionId\":\"s1\",\"message\":\"Hi\"}"))

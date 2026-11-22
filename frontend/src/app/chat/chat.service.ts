@@ -29,6 +29,27 @@ export interface RunStarted {
   session: Session;
 }
 
+/** A model a message can be answered with. */
+export interface ModelChoice {
+  id: string;
+  label: string;
+}
+
+/** What can be chosen for a run, and what applies when nothing is. */
+export interface RunOptions {
+  models: ModelChoice[];
+  defaultModel: string;
+  /** From the lightest to the heaviest, as the provider names them. */
+  reasoningEfforts: string[];
+  defaultReasoningEffort: string;
+}
+
+/** The choices made for one run. */
+export interface RunSettings {
+  model: string;
+  reasoningEffort: string;
+}
+
 /** What following a run reports. Exactly one of done, failed and lost ends it. */
 export interface RunHandlers {
   text(text: string): void;
@@ -43,6 +64,11 @@ export interface RunHandlers {
 export class ChatService {
   sessions(): Promise<Session[]> {
     return json(fetch('/api/sessions'));
+  }
+
+  /** The models and reasoning efforts on offer. */
+  options(): Promise<RunOptions> {
+    return json(fetch('/api/runs/options'));
   }
 
   conversation(sessionId: string): Promise<Conversation> {
@@ -61,14 +87,18 @@ export class ChatService {
   /**
    * Sends a message. The backend answers at once and works on the reply in the
    * background: it is read with {@link watch}. Without a session id a new conversation
-   * is started.
+   * is started; without settings the backend's default model and effort are used.
    */
-  start(message: string, sessionId: string | null): Promise<RunStarted> {
+  start(
+    message: string,
+    sessionId: string | null,
+    settings?: RunSettings | null,
+  ): Promise<RunStarted> {
     return json(
       fetch('/api/runs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, message }),
+        body: JSON.stringify({ sessionId, message, ...settings }),
       }),
     );
   }

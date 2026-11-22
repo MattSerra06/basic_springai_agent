@@ -32,19 +32,29 @@ public class ChatController {
 
     private final ChatService chatService;
     private final RunStore runs;
+    private final RunOptions runOptions;
     private final Duration heartbeat;
 
-    public ChatController(ChatService chatService, RunStore runs, AgentProperties properties) {
+    public ChatController(ChatService chatService, RunStore runs, RunOptions runOptions,
+                          AgentProperties properties) {
         this.chatService = chatService;
         this.runs = runs;
+        this.runOptions = runOptions;
         this.heartbeat = properties.streamHeartbeat();
+    }
+
+    /** The models and reasoning efforts a message can be sent with, and the defaults. */
+    @GetMapping("/options")
+    public RunOptions.Choices options() {
+        return runOptions.choices();
     }
 
     /** Sends a message; the reply is read from {@code GET /api/runs/{id}/events}. */
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
     public ChatService.RunStarted start(@Valid @RequestBody ChatRequest request) {
-        return chatService.start(request.sessionId(), request.message());
+        return chatService.start(request.sessionId(), request.message(), request.model(),
+                request.reasoningEffort());
     }
 
     /**

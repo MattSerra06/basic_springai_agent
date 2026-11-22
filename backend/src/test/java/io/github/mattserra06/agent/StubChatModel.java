@@ -12,7 +12,7 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.openai.responses.OpenAiResponsesChatOptions;
 import reactor.core.publisher.Flux;
 
 /**
@@ -59,10 +59,13 @@ public class StubChatModel implements ChatModel {
         this.script = script;
     }
 
-    /** Tool-calling options, so that the ChatClient runs its tool-calling loop. */
+    /**
+     * The options of the model it stands in for, so that the ChatClient runs its
+     * tool-calling loop and takes the per-run model and reasoning effort.
+     */
     @Override
     public ChatOptions getOptions() {
-        return ToolCallingChatOptions.builder().build();
+        return OpenAiResponsesChatOptions.builder().build();
     }
 
     /** Every summary takes this long to write. */

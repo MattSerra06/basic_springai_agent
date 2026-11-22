@@ -1,8 +1,26 @@
 import { TestBed } from '@angular/core/testing';
-import { ChatService, Conversation, RunHandlers, RunStarted, Session } from './chat.service';
+import {
+  ChatService,
+  Conversation,
+  RunHandlers,
+  RunOptions,
+  RunSettings,
+  RunStarted,
+  Session,
+} from './chat.service';
 import { ChatStore } from './chat.store';
 
 const SESSION: Session = { id: 's1', title: 'Salut', createdAt: '2026-01-01T00:00:00Z' };
+
+const OPTIONS: RunOptions = {
+  models: [
+    { id: 'gpt-6.2-sol', label: 'GPT-6.2 Sol' },
+    { id: 'gpt-6.2-astra', label: 'GPT-6.2 Astra' },
+  ],
+  defaultModel: 'gpt-6.2-sol',
+  reasoningEfforts: ['low', 'medium', 'high', 'xhigh'],
+  defaultReasoningEffort: 'medium',
+};
 
 interface Watch {
   runId: string;
@@ -17,7 +35,8 @@ interface Watch {
  */
 class FakeChatService {
   conversations: Record<string, Conversation> = {};
-  sent: { message: string; sessionId: string | null }[] = [];
+  sent: { message: string; sessionId: string | null; settings?: RunSettings | null }[] = [];
+  failOptions = false;
   interrupted: string[] = [];
   removed: string[] = [];
   watches: Watch[] = [];
@@ -52,6 +71,13 @@ class FakeChatService {
     return [SESSION];
   }
 
+  async options(): Promise<RunOptions> {
+    if (this.failOptions) {
+      throw new Error('503');
+    }
+    return OPTIONS;
+  }
+
   async conversation(sessionId: string): Promise<Conversation> {
     await this.gate();
     if (!(sessionId in this.conversations)) {
@@ -60,8 +86,12 @@ class FakeChatService {
     return this.conversations[sessionId];
   }
 
-  async start(message: string, sessionId: string | null): Promise<RunStarted> {
-    this.sent.push({ message, sessionId });
+  async start(
+    message: string,
+    sessionId: string | null,
+    settings?: RunSettings | null,
+  ): Promise<RunStarted> {
+    this.sent.push(settings ? { message, sessionId, settings } : { message, sessionId });
     await this.gate();
     if (this.failStart) {
       throw new Error('409');
@@ -106,6 +136,7 @@ describe('ChatStore', () => {
   let store: ChatStore;
 
   beforeEach(() => {
+    localStorage.clear();
     api = new FakeChatService();
     TestBed.configureTestingModule({ providers: [{ provide: ChatService, useValue: api }] });
     store = TestBed.inject(ChatStore);
@@ -135,6 +166,52 @@ describe('ChatStore', () => {
 
     expect(store.messages().at(-1)).toEqual({ role: 'assistant', content: 'Bonjour' });
     expect(store.streaming()).toBe(false);
+  });
+
+  it('answers with the default model and effort until others are chosen', async () => {
+    await store.loadOptions();
+
+    expect(store.model()).toBe('gpt-6.2-sol');
+    expect(store.reasoningEffort()).toBe('medium');
+
+    store.chooseModel('gpt-6.2-astra');
+    store.chooseReasoningEffort('xhigh');
+    await store.send('Salut');
+
+    expect(api.sent).toEqual([
+      {
+        message: 'Salut',
+        sessionId: null,
+        settings: { model: 'gpt-6.2-astra', reasoningEffort: 'xhigh' },
+      },
+    ]);
+  });
+
+  it('keeps the choices made in this browser while they are still on offer', async () => {
+    await store.loadOptions();
+    store.chooseModel('gpt-6.2-astra');
+    store.chooseReasoningEffort('high');
+
+    const reopened = TestBed.runInInjectionContext(() => new ChatStore());
+    await reopened.loadOptions();
+    expect(reopened.model()).toBe('gpt-6.2-astra');
+    expect(reopened.reasoningEffort()).toBe('high');
+
+    // A choice that was withdrawn, or anything else found in storage, gives the default.
+    localStorage.setItem('agent.run-settings', '{"model":"gpt-retired","reasoningEffort":"none"}');
+    await reopened.loadOptions();
+    expect(reopened.model()).toBe('gpt-6.2-sol');
+    expect(reopened.reasoningEffort()).toBe('medium');
+  });
+
+  it('sends messages without settings when the options cannot be loaded', async () => {
+    api.failOptions = true;
+    await store.loadOptions();
+
+    await store.send('Salut');
+
+    expect(store.options()).toBeNull();
+    expect(api.sent).toEqual([{ message: 'Salut', sessionId: null }]);
   });
 
   it('opens a previous conversation and continues it', async () => {

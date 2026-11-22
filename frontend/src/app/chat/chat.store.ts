@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { ChatService, Message, Session } from './chat.service';
+import { ChatService, Message, RunOptions, RunSettings, Session } from './chat.service';
 
 /**
  * The state of the UI: the conversations of the sidebar, the one that is open, and the
@@ -32,12 +32,54 @@ export class ChatStore {
   /** A failure to show above the thread, e.g. the backend is down. */
   readonly problem = signal<string | null>(null);
 
+  /** The models and reasoning efforts on offer; null until they are loaded. */
+  readonly options = signal<RunOptions | null>(null);
+  /** The model the next message is answered with. */
+  readonly model = signal<string | null>(null);
+  /** How hard the model reasons on the next message. */
+  readonly reasoningEffort = signal<string | null>(null);
+
   async loadSessions(): Promise<void> {
     try {
       this.sessions.set(await this.api.sessions());
     } catch (error) {
       this.problem.set(`Impossible de charger les conversations. ${reason(error)}`);
     }
+  }
+
+  /**
+   * Loads what can be chosen for a run. The last choices made in this browser are kept
+   * when they are still on offer. If this fails the controls stay hidden and messages
+   * are answered with the backend's defaults.
+   */
+  async loadOptions(): Promise<void> {
+    try {
+      const options = await this.api.options();
+      const saved = savedSettings();
+      this.model.set(
+        options.models.some((model) => model.id === saved.model)
+          ? saved.model!
+          : options.defaultModel,
+      );
+      this.reasoningEffort.set(
+        options.reasoningEfforts.includes(saved.reasoningEffort ?? '')
+          ? saved.reasoningEffort!
+          : options.defaultReasoningEffort,
+      );
+      this.options.set(options);
+    } catch {
+      this.options.set(null);
+    }
+  }
+
+  chooseModel(model: string): void {
+    this.model.set(model);
+    saveSettings(this.settings());
+  }
+
+  chooseReasoningEffort(reasoningEffort: string): void {
+    this.reasoningEffort.set(reasoningEffort);
+    saveSettings(this.settings());
   }
 
   /**
@@ -107,7 +149,7 @@ export class ChatStore {
     this.stopWhenStarted = false;
 
     try {
-      const started = await this.api.start(message, sessionId);
+      const started = await this.api.start(message, sessionId, this.settings());
       if (sessionId === null) {
         // The conversation exists from now on, wherever the user has gone meanwhile.
         this.sessions.update((all) => [started.session, ...all]);
@@ -233,6 +275,13 @@ export class ChatStore {
     }
   }
 
+  /** The choices for the next run; null while the options are not known. */
+  private settings(): RunSettings | null {
+    const model = this.model();
+    const reasoningEffort = this.reasoningEffort();
+    return this.options() && model && reasoningEffort ? { model, reasoningEffort } : null;
+  }
+
   /** Stops following the run of the open conversation, if any. */
   private detach(): void {
     this.unwatch?.();
@@ -244,6 +293,28 @@ export class ChatStore {
     this.messages.update((all) =>
       all.length ? [...all.slice(0, -1), change(all[all.length - 1])] : all,
     );
+  }
+}
+
+const SETTINGS_KEY = 'agent.run-settings';
+
+/** The choices last made in this browser; storage may be unavailable or hold anything. */
+function savedSettings(): Partial<RunSettings> {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}');
+    return saved && typeof saved === 'object' ? saved : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveSettings(settings: RunSettings | null): void {
+  try {
+    if (settings) {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+  } catch {
+    // A convenience only: the choice still applies to this page.
   }
 }
 

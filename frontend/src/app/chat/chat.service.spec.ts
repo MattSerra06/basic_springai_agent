@@ -83,6 +83,34 @@ describe('ChatService', () => {
     });
   });
 
+  it('sends the chosen model and reasoning effort with the message', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('{"runId":"r1","session":{}}', { status: 202 }));
+
+    await service.start('Salut', 's1', { model: 'gpt-6.2-astra', reasoningEffort: 'high' });
+
+    expect(fetchSpy.mock.calls[0][1]).toMatchObject({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(JSON.parse(fetchSpy.mock.calls[0][1]!.body as string)).toEqual({
+      sessionId: 's1',
+      message: 'Salut',
+      model: 'gpt-6.2-astra',
+      reasoningEffort: 'high',
+    });
+  });
+
+  it('loads the models and efforts on offer', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('{"models":[],"reasoningEfforts":["low"]}'));
+
+    expect(await service.options()).toEqual({ models: [], reasoningEfforts: ['low'] });
+    expect(fetchSpy).toHaveBeenCalledWith('/api/runs/options');
+  });
+
   it('throws when the server rejects a request', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () => new Response(null, { status: 409 }),

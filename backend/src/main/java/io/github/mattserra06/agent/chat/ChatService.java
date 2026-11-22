@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springaicommunity.agent.advisors.InterruptAdvisor;
 import org.springaicommunity.agent.advisors.TurnInterruptedException;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.responses.OpenAiResponsesChatOptions;
 import org.springframework.ai.session.advisor.SessionAdvisors;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -26,14 +27,16 @@ public class ChatService {
     private final Conversations conversations;
     private final ActiveTurns activeTurns;
     private final RunStore runs;
+    private final RunOptions runOptions;
     private final SessionCompactor compactor;
 
     public ChatService(ChatClient chatClient, Conversations conversations, ActiveTurns activeTurns, RunStore runs,
-                       SessionCompactor compactor) {
+                       RunOptions runOptions, SessionCompactor compactor) {
         this.chatClient = chatClient;
         this.conversations = conversations;
         this.activeTurns = activeTurns;
         this.runs = runs;
+        this.runOptions = runOptions;
         this.compactor = compactor;
     }
 
@@ -43,10 +46,15 @@ public class ChatService {
      * not depend on any client staying connected.
      *
      * @param sessionId the conversation to continue, or {@code null} to start one
-     * @throws org.springframework.web.server.ResponseStatusException 404 for an unknown
-     * session, 409 when the session is still generating a reply
+     * @param model the model that answers, or {@code null} for the default
+     * @param reasoningEffort how hard it reasons, or {@code null} for the default
+     * @throws org.springframework.web.server.ResponseStatusException 400 for a model or
+     * an effort that is not on offer, 404 for an unknown session, 409 when the session is
+     * still generating a reply
      */
-    public RunStarted start(@Nullable String sessionId, String message) {
+    public RunStarted start(@Nullable String sessionId, String message, @Nullable String model,
+                            @Nullable String reasoningEffort) {
+        RunOptions.Selection selection = runOptions.select(model, reasoningEffort);
         SessionView session = (sessionId != null) ? conversations.get(sessionId) : conversations.create(message);
         Turn turn = activeTurns.start(session.id());
         Run run;
@@ -57,7 +65,7 @@ public class ChatService {
             activeTurns.finish(session.id(), turn);
             throw ex;
         }
-        work(run, turn)
+        work(run, turn, selection)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(event -> {
                 }, error -> log.error("Run {} ended without telling its clients", run.id(), error));
@@ -78,7 +86,7 @@ public class ChatService {
      * grown too long. The next turn of the session waits for that, so the history never
      * changes under a running turn.
      */
-    private Flux<ChatEvent> work(Run run, Turn turn) {
+    private Flux<ChatEvent> work(Run run, Turn turn, RunOptions.Selection selection) {
         String sessionId = run.sessionId();
 
         Flux<ChatEvent> reply = Flux.defer(() -> {
@@ -92,6 +100,9 @@ public class ChatService {
                 return Flux.empty();
             }
             return chatClient.prompt()
+                    .options(OpenAiResponsesChatOptions.builder()
+                            .model(selection.model())
+                            .reasoningEffort(selection.reasoningEffort()))
                     .user(run.message())
                     .advisors(SessionAdvisors.session(sessionId))
                     .advisors(InterruptAdvisor.builder().interruptSignal(turn::isInterrupted).build())

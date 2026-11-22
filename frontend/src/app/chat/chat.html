@@ -52,18 +52,29 @@
   </main>
 
   <form class="composer" (submit)="$event.preventDefault(); send()">
-    <textarea
-      rows="1"
-      placeholder="Écrivez votre message…"
-      aria-label="Message"
-      [value]="draft()"
-      (input)="draft.set($any($event.target).value)"
-      (keydown)="onKeydown($event)"
-    ></textarea>
-    @if (store.streaming()) {
-      <button type="button" class="stop" (click)="store.stop()">Arrêter</button>
-    } @else {
-      <button type="submit" [disabled]="!draft().trim() || store.loading()">Envoyer</button>
+    @if (store.options(); as options) {
+      <app-run-settings
+        [options]="options"
+        [model]="store.model()"
+        [reasoningEffort]="store.reasoningEffort()"
+        (modelChange)="store.chooseModel($event)"
+        (reasoningEffortChange)="store.chooseReasoningEffort($event)"
+      />
     }
+    <div class="entry">
+      <textarea
+        rows="1"
+        placeholder="Écrivez votre message…"
+        aria-label="Message"
+        [value]="draft()"
+        (input)="draft.set($any($event.target).value)"
+        (keydown)="onKeydown($event)"
+      ></textarea>
+      @if (store.streaming()) {
+        <button type="button" class="stop" (click)="store.stop()">Arrêter</button>
+      } @else {
+        <button type="submit" [disabled]="!draft().trim() || store.loading()">Envoyer</button>
+      }
+    </div>
   </form>
 </section>

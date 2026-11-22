@@ -6,7 +6,11 @@ spring:
       # Never commit a key: export OPENAI_API_KEY before starting the app.
       api-key: ${OPENAI_API_KEY}
       chat:
-        model: gpt-6.1-sol
+        # Talk to the Responses API rather than Chat Completions.
+        api: responses
+      responses:
+        # Used when no model is chosen per message: the summaries of a compaction.
+        model: gpt-6.2-sol
       # The starter also provides a DecisionModel bean (OpenAI Decisions API);
       # its model is set with spring.ai.openai.decision.model.
     session:
@@ -35,6 +39,17 @@ agent:
     In a long conversation the oldest messages are replaced by a summary:
     use the conversation_search tool when you need a detail that is no longer
     in your context.
+  # Models offered in the UI; the first one is the default.
+  models:
+    - id: gpt-6.2-sol
+      label: GPT-6.2 Sol
+    - id: gpt-6.2-astra
+      label: GPT-6.2 Astra
+  reasoning:
+    # Efforts offered by the slider, from the lightest to the heaviest, as the
+    # Responses API names them (reasoning.effort).
+    efforts: [low, medium, high, xhigh]
+    default-effort: medium
   # Keep-alive line sent on the event stream while the model is silent; keep it
   # under the idle timeout of any proxy in front of the backend.
   stream-heartbeat: 15s

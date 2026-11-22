@@ -1,0 +1,22 @@
+<label>
+  <span>Modèle</span>
+  <select (change)="modelChange.emit($any($event.target).value)">
+    @for (choice of options().models; track choice.id) {
+      <option [value]="choice.id" [selected]="choice.id === model()">{{ choice.label }}</option>
+    }
+  </select>
+</label>
+
+<label>
+  <span>Raisonnement</span>
+  <input
+    type="range"
+    min="0"
+    step="1"
+    [max]="options().reasoningEfforts.length - 1"
+    [value]="effortIndex()"
+    [attr.aria-valuetext]="effortLabel()"
+    (input)="chooseEffort($any($event.target).valueAsNumber)"
+  />
+  <output>{{ effortLabel() }}</output>
+</label>

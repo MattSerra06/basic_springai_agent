@@ -19,6 +19,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.openai.responses.OpenAiResponsesChatOptions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -79,7 +80,7 @@ class AgentIntegrationTest {
     void aNewConversationIsStoredListedAndContinued() {
         model.repliesWith("Bonjour ", "Ada !");
 
-        ChatService.RunStarted first = chatService.start(null, "Bonjour, je m'appelle Ada");
+        ChatService.RunStarted first = chatService.start(null, "Bonjour, je m'appelle Ada", null, null);
 
         SessionView session = first.session();
         assertThat(session.title()).isEqualTo("Bonjour, je m'appelle Ada");
@@ -88,7 +89,7 @@ class AgentIntegrationTest {
         assertThat(conversations.list()).extracting(SessionView::id).contains(session.id());
 
         model.repliesWith("Ada.");
-        ChatService.RunStarted second = chatService.start(session.id(), "Quel est mon nom ?");
+        ChatService.RunStarted second = chatService.start(session.id(), "Quel est mon nom ?", null, null);
 
         // Same session, and the model was sent the history
         assertThat(second.session()).isEqualTo(conversations.get(session.id()));
@@ -104,11 +105,41 @@ class AgentIntegrationTest {
     }
 
     @Test
+    void aMessageIsAnsweredWithTheModelAndReasoningEffortItAsksFor() {
+        ChatService.RunStarted started = chatService.start(null, "Bonjour", "gpt-6.2-astra", "high");
+        eventsOf(started.runId());
+
+        OpenAiResponsesChatOptions asked = (OpenAiResponsesChatOptions) model.prompts.getLast().getOptions();
+        assertThat(asked.getModel()).isEqualTo("gpt-6.2-astra");
+        assertThat(asked.getReasoningEffort()).isEqualTo("high");
+
+        // Without a choice, the defaults of the configuration
+        converse(started.session().id(), "Encore");
+        OpenAiResponsesChatOptions byDefault = (OpenAiResponsesChatOptions) model.prompts.getLast().getOptions();
+        assertThat(byDefault.getModel()).isEqualTo("gpt-6.2-sol");
+        assertThat(byDefault.getReasoningEffort()).isEqualTo("medium");
+    }
+
+    @Test
+    void aModelThatIsNotOnOfferIsRefusedBeforeAnythingIsCreated() {
+        int sessionsBefore = conversations.list().size();
+
+        assertThatThrownBy(() -> chatService.start(null, "Bonjour", "gpt-expensive", null))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        assertThatThrownBy(() -> chatService.start(null, "Bonjour", null, "none"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        assertThat(conversations.list()).hasSize(sessionsBefore);
+    }
+
+    @Test
     void aRunGoesOnWithoutAnyClientAndCanBeReadAfterwards() {
         String sessionId = converse(null, "Premier message").session().id();
         model.repliesSlowlyWith(Duration.ofMillis(50), "un ", "deux ", "trois ");
 
-        String runId = chatService.start(sessionId, "Compte").runId();
+        String runId = chatService.start(sessionId, "Compte", null, null).runId();
 
         // Nobody reads the events, the reply is produced and stored all the same
         await().atMost(TIMEOUT).untilAsserted(() -> assertThat(conversations.open(sessionId).messages())
@@ -126,7 +157,7 @@ class AgentIntegrationTest {
         String sessionId = converse(null, "Premier message").session().id();
         model.repliesSlowlyWith(Duration.ofMillis(100), "un ", "deux ", "trois ", "quatre ");
 
-        String runId = chatService.start(sessionId, "Compte").runId();
+        String runId = chatService.start(sessionId, "Compte", null, null).runId();
         runs.events(runId, 0).blockFirst(TIMEOUT);
         ConversationView during = conversations.open(sessionId);
 
@@ -156,7 +187,7 @@ class AgentIntegrationTest {
         conversations.delete(first);
 
         assertThat(conversations.list()).extracting(SessionView::id).contains(second).doesNotContain(first);
-        assertThatThrownBy(() -> chatService.start(first, "Encore ?"))
+        assertThatThrownBy(() -> chatService.start(first, "Encore ?", null, null))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
     }
@@ -166,7 +197,7 @@ class AgentIntegrationTest {
         String sessionId = converse(null, "Premier message").session().id();
         model.repliesSlowlyWith(Duration.ofMillis(100), "un ", "deux ", "trois ", "quatre ", "cinq ", "six ");
 
-        String runId = chatService.start(sessionId, "Compte jusqu'à six").runId();
+        String runId = chatService.start(sessionId, "Compte jusqu'à six", null, null).runId();
 
         StepVerifier.create(runs.events(runId, 0).map(RunEvent::event))
                 .expectNext(new ChatEvent.Text("un "))
@@ -191,9 +222,9 @@ class AgentIntegrationTest {
         String sessionId = converse(null, "Premier message").session().id();
         model.repliesSlowlyWith(Duration.ofMillis(200), "un ", "deux ");
 
-        String runId = chatService.start(sessionId, "Compte").runId();
+        String runId = chatService.start(sessionId, "Compte", null, null).runId();
 
-        assertThatThrownBy(() -> chatService.start(sessionId, "Et moi ?"))
+        assertThatThrownBy(() -> chatService.start(sessionId, "Et moi ?", null, null))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
         eventsOf(runId);
@@ -248,7 +279,7 @@ class AgentIntegrationTest {
         String sessionId = converse(null, "Premier message").session().id();
         model.repliesSlowlyWith(Duration.ofMillis(100), "un ", "deux ", "trois ", "quatre ", "cinq ");
 
-        String runId = chatService.start(sessionId, "Compte").runId();
+        String runId = chatService.start(sessionId, "Compte", null, null).runId();
 
         StepVerifier.create(runs.events(runId, 0).map(RunEvent::event))
                 .expectNext(new ChatEvent.Text("un "))
@@ -294,7 +325,7 @@ class AgentIntegrationTest {
         // The second round never gets to say anything
         model.repliesWith(searchThenAnswer("Je cherche.", Flux.never()));
 
-        String runId = chatService.start(sessionId, "Quel est mon code ?").runId();
+        String runId = chatService.start(sessionId, "Quel est mon code ?", null, null).runId();
         int promptsBefore = model.prompts.size();
         await().atMost(TIMEOUT).until(() -> model.prompts.size() > promptsBefore
                 && model.prompts.getLast().getInstructions().getLast() instanceof ToolResponseMessage);
@@ -312,7 +343,7 @@ class AgentIntegrationTest {
         model.repliesWith(searchThenAnswer("Je cherche.",
                 Flux.concat(Flux.just(new AssistantMessage("Trouvé : ")), Flux.never())));
 
-        String runId = chatService.start(sessionId, "Quel est mon code ?").runId();
+        String runId = chatService.start(sessionId, "Quel est mon code ?", null, null).runId();
 
         StepVerifier.create(runs.events(runId, 0).map(RunEvent::event))
                 .expectNext(new ChatEvent.Text("Je cherche."))
@@ -336,7 +367,7 @@ class AgentIntegrationTest {
         int promptsBefore = model.prompts.size();
 
         // The second turn is compacting: the third is accepted, waits, and is stopped there
-        String runId = chatService.start(sessionId, "THIRD").runId();
+        String runId = chatService.start(sessionId, "THIRD", null, null).runId();
         activeTurns.interrupt(sessionId);
         model.releaseSummaries();
 
@@ -369,7 +400,7 @@ class AgentIntegrationTest {
 
     /** Sends a message and waits for the run to end. */
     private Exchange converse(String sessionId, String message) {
-        ChatService.RunStarted started = chatService.start(sessionId, message);
+        ChatService.RunStarted started = chatService.start(sessionId, message, null, null);
         return new Exchange(started.session(), eventsOf(started.runId()));
     }
 

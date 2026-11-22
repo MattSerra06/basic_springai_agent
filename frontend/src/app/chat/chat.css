@@ -127,10 +127,15 @@
 
 .composer {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem 0 1.25rem;
   border-top: 1px solid var(--line);
+}
+.entry {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
 }
 textarea {
   flex: 1;
@@ -151,7 +156,7 @@ button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-.composer button {
+.entry button {
   height: 2.75rem;
   padding: 0 1.125rem;
   border: 0;
@@ -162,11 +167,11 @@ button:focus-visible {
   font-weight: 600;
   cursor: pointer;
 }
-.composer button:disabled {
+.entry button:disabled {
   opacity: 0.45;
   cursor: default;
 }
-.composer button.stop {
+.entry button.stop {
   background: transparent;
   color: inherit;
   box-shadow: inset 0 0 0 1px var(--line);

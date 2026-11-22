@@ -14,11 +14,12 @@ import {
 import { Router } from '@angular/router';
 import { SessionList } from '../sessions/session-list';
 import { ChatStore } from './chat.store';
+import { RunSettingsBar } from './run-settings';
 
 /** The page: the conversations on the left, the open one on the right. */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SessionList],
+  imports: [RunSettingsBar, SessionList],
   selector: 'app-chat',
   styleUrl: './chat.css',
   templateUrl: './chat.html',
@@ -41,6 +42,7 @@ export class Chat {
 
   constructor() {
     void this.store.loadSessions();
+    void this.store.loadOptions();
 
     // The URL names the conversation to show.
     effect(() => {
