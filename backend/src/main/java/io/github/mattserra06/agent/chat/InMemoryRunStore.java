@@ -78,7 +78,8 @@ public class InMemoryRunStore implements RunStore {
         Instant limit = Instant.now().minus(retention);
         entries.values().removeIf(entry -> {
             Instant endedAt = entry.endedAt;
-            return endedAt != null && endedAt.isBefore(limit);
+            // Not isBefore: two readings of the clock can be equal, on Windows above all
+            return endedAt != null && !endedAt.isAfter(limit);
         });
     }
 
