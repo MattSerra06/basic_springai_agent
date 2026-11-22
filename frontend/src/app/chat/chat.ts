@@ -13,9 +13,11 @@ import {
   viewChild,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { GeneratedUi } from '../openui/generated-ui';
 import { SessionList } from '../sessions/session-list';
 import { ThemeToggle } from '../theme/theme-toggle';
 import { ChatStore } from './chat.store';
+import { ReplyPartsPipe } from './reply-parts';
 import { RunSettingsBar } from './run-settings';
 
 /** Below this width the sidebar is a drawer over the page; the same value is in chat.css. */
@@ -28,7 +30,7 @@ const NARROW = '(max-width: 48rem)';
     '[class.railed]': 'railed()',
     '(document:keydown.escape)': 'menuOpen.set(false)',
   },
-  imports: [RouterLink, RunSettingsBar, SessionList, ThemeToggle],
+  imports: [GeneratedUi, ReplyPartsPipe, RouterLink, RunSettingsBar, SessionList, ThemeToggle],
   selector: 'app-chat',
   styleUrls: ['./chat.css', './thread.css', './blank.css', './composer.css'],
   templateUrl: './chat.html',
@@ -98,6 +100,11 @@ export class Chat {
       return;
     }
     this.draft.set('');
+    this.sendText(text);
+  }
+
+  /** Sends a message: the one typed, or the one a click in a reply's interface asks for. */
+  protected sendText(text: string): void {
     // A first message creates the session: give it its URL as soon as it has one.
     void this.store.send(text, (session) => this.router.navigate(['/c', session.id]));
   }

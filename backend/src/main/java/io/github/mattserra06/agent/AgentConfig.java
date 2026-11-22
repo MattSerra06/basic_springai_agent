@@ -8,6 +8,7 @@ import io.github.mattserra06.agent.linkup.LinkupClient;
 import io.github.mattserra06.agent.linkup.LinkupProperties;
 import io.github.mattserra06.agent.linkup.LinkupResearchTools;
 import io.github.mattserra06.agent.linkup.LinkupTools;
+import io.github.mattserra06.agent.openui.OpenUiProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -31,10 +32,14 @@ public class AgentConfig {
      * <p>
      * With a Linkup API key the model also gets the web tools, and the system prompt
      * says so; without one the agent simply runs without them.
+     * <p>
+     * With the generated interface on, the system prompt ends with the OpenUI prompt:
+     * the model then writes its replies as component calls, which the frontend draws.
+     * Nothing else changes: a reply is still text, streamed through the same events.
      */
     @Bean
     ChatClient agentChatClient(ChatClient.Builder builder, SessionService sessionService,
-                               AgentProperties properties, LinkupProperties linkup) {
+                               AgentProperties properties, LinkupProperties linkup, OpenUiProperties openUi) {
         List<Object> tools = new ArrayList<>();
         tools.add(SessionRecallTools.builder(sessionService).build());
         String systemPrompt = properties.systemPrompt();
@@ -49,6 +54,13 @@ public class AgentConfig {
         }
         else {
             log.info("Web tools are off: no Linkup API key (LINKUP_API_KEY)");
+        }
+        if (openUi.enabled()) {
+            systemPrompt = systemPrompt.strip() + "\n\n" + openUi.instructions();
+            log.info("Generated interface is on: replies are written in OpenUI Lang");
+        }
+        else {
+            log.info("Generated interface is off: replies are plain text");
         }
         return builder
                 .defaultSystem(systemPrompt)

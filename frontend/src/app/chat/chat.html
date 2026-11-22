@@ -50,7 +50,27 @@
           [class.live]="store.streaming() && $last"
         >
           <span class="who kicker">{{ message.role === 'user' ? 'Vous' : 'Agent' }}</span>
-          @if (message.content) {
+          @let live = store.streaming() && $last;
+          @if (message.role === 'assistant' && !message.error && message.content) {
+            <!-- A reply is an interface the agent wrote, with or without text before it. -->
+            @let reply = message.content | replyParts: live;
+            @if (reply.prose) {
+              <p>{{ reply.prose }}</p>
+            }
+            @if (reply.program) {
+              <!-- The renderer and the catalogue come with the first interface to draw. -->
+              @defer (on immediate) {
+                <app-generated-ui
+                  [program]="reply.program"
+                  [streaming]="live"
+                  [busy]="store.streaming() || store.loading()"
+                  (send)="sendText($event)"
+                />
+              } @placeholder {
+                <p class="pending" aria-label="Réponse en cours"><i></i><i></i><i></i><i></i></p>
+              }
+            }
+          } @else if (message.content) {
             <p>{{ message.content }}</p>
           } @else if (store.streaming() && $last) {
             <p class="pending" aria-label="Réponse en cours"><i></i><i></i><i></i><i></i></p>

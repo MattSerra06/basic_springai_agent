@@ -6,7 +6,9 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "openui:prompt": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/openui-prompt.mjs",
+    "pretest": "npm run openui:prompt -- --check"
   },
   "private": true,
   "packageManager": "npm@10.9.9",
@@ -20,13 +22,18 @@
     "@fontsource-variable/instrument-sans": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/instrument-serif": "^5.3.0",
+    "@openuidev/angular-lang": "^0.4.2",
+    "@openuidev/lang-core": "^0.4.1",
+    "leaflet": "^1.9.4",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@angular/build": "^22.3.0",
     "@angular/cli": "^22.3.0",
     "@angular/compiler-cli": "^22.3.0",
+    "@types/leaflet": "^1.9.22",
     "jsdom": "^31.0.0",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2",

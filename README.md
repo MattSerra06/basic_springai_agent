@@ -29,6 +29,10 @@ Monorepo d'un agent conversationnel en streaming :
 - **Recherche web** (optionnelle, [Linkup](https://docs.linkup.so)) : avec une clé
   `LINKUP_API_KEY`, le modèle peut chercher sur le web, lire une page et lancer une
   recherche approfondie. Voir « Outils web ».
+- **Réponses en interface** ([OpenUI](https://github.com/thesysdev/openui), partie open
+  source uniquement) : le modèle écrit ses réponses en OpenUI Lang et le chat les dessine
+  au fil du streaming : tableaux, graphiques, cartes, liens et sources citées, formulaires,
+  suggestions de suite. Voir « Interface générée ».
 
 ## Prérequis
 
@@ -95,6 +99,61 @@ Tout est dans `backend/src/main/resources/application.yaml` :
 | `agent.linkup.instructions` | Paragraphe ajouté au prompt système quand les outils web sont actifs |
 | `agent.linkup.research.enabled` | `false` pour ne pas donner au modèle les outils de recherche approfondie (payants à la tâche) |
 | `agent.linkup.research.poll-interval`, `agent.linkup.research.max-wait` | Pendant que le modèle attend une recherche approfondie : fréquence des vérifications, et attente maximale d'un appel d'outil |
+| `agent.openui.enabled` | `true` : le modèle écrit ses réponses en OpenUI Lang, que le frontend dessine ; `false` : réponses en texte brut |
+| `agent.openui.prompt` | Le prompt qui enseigne au modèle le langage et le catalogue, généré depuis le frontend (`npm run openui:prompt`) |
+
+## Interface générée
+
+Le modèle ne répond pas en Markdown mais en **OpenUI Lang**, un petit langage d'appels de
+composants (`root = Response([t, tbl])`, `tbl = Table([...], [...])`). Le chat l'analyse
+à chaque fragment reçu et dessine ce qui est déjà là. Seule la partie open source
+d'OpenUI est utilisée : pas de gateway, pas de clé Thesys, le modèle reste celui que
+l'agent appelle déjà.
+
+- **Le catalogue** (`frontend/src/app/openui/catalogue.ts`) décrit chaque composant : son
+  nom, l'ordre et le type de ses arguments. C'est le contrat entre les deux côtés.
+- **Côté frontend**, `library.ts` associe chaque nom à un composant Angular
+  (`frontend/src/app/openui/components/`), dessiné par `@openuidev/angular-lang` avec les
+  variables de `styles/tokens.css` : les deux thèmes suivent sans rien de plus.
+- **Côté backend**, `npm run openui:prompt` (dans `frontend/`) transforme le même catalogue
+  en prompt, écrit dans `backend/src/main/resources/openui/system-prompt.txt` et ajouté
+  au prompt système. Le fichier est versionné ; `npm test` échoue s'il n'est plus à jour.
+- Le reste ne change pas : une réponse est toujours du texte, porté par les mêmes
+  événements du run, stocké tel quel dans la session.
+
+| Famille | Composants |
+| --- | --- |
+| Texte | `Heading`, `TextContent` (gras, italique, code, liens, citations `[1]`), `Callout`, `Quote`, `CodeBlock`, `Separator` |
+| Liens et médias | `LinkCards`, les `sources` de `Response`, `Image`, `ImageGallery` |
+| Données | `Table`, `KeyValues`, `Metrics`, `Tags` |
+| Graphiques | `BarChart`, `HorizontalBarChart`, `LineChart`, `AreaChart`, `PieChart` |
+| Carte | `Map` et ses `Marker` (Leaflet, fonds OpenStreetMap) |
+| Listes | `List`, `Steps`, `Timeline` |
+| Cartes et actions | `Cards`, `Buttons`, `FollowUps` |
+| Mise en page | `Tabs`, `Accordion` |
+| Formulaires | `Form`, `Input`, `TextArea`, `Select`, `RadioGroup`, `CheckBoxGroup`, `Slider`, `DatePicker` |
+
+La page http://localhost:4200/catalogue les montre tous, chacun à partir du programme
+qu'écrirait le modèle, sans appeler le backend.
+
+Pour ajouter un composant : le définir dans `catalogue.ts`, écrire son composant Angular,
+l'enregistrer dans `library.ts`, ajouter un exemple à `samples.ts`, puis
+`npm run openui:prompt`. Les arguments sont positionnels : n'en ajouter qu'à la fin, sinon
+les conversations déjà stockées ne se dessinent plus.
+
+À savoir :
+
+- Un clic sur un bouton, une suggestion ou l'envoi d'un formulaire part comme le message
+  suivant de l'utilisateur ; les valeurs du formulaire l'accompagnent.
+- Ce que le modèle écrit de travers est retiré, le reste s'affiche. Rien ne corrige la
+  sortie du modèle : cette correction passe par les services hébergés d'OpenUI.
+- Les réponses écrites avant cette fonctionnalité, ou avec `agent.openui.enabled: false`,
+  sont du texte brut et s'affichent comme tel.
+- Les liens et les images ne sont suivis qu'en `http(s)`. Une carte charge ses tuiles
+  depuis les serveurs d'OpenStreetMap, une image depuis l'adresse donnée par le modèle.
+- `@openuidev/lang-core` envoie une télémétrie d'installation à son éditeur lors de
+  `npm install` ; `OPENUI_TELEMETRY_DISABLED=1` (ou `DO_NOT_TRACK=1`) la coupe. Rien n'est
+  envoyé à l'exécution.
 
 ## Outils web
 

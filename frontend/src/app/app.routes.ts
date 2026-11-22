@@ -18,5 +18,10 @@ function conversation(segments: UrlSegment[]): UrlMatchResult | null {
 
 export const routes: Routes = [
   { matcher: conversation, component: Chat },
+  {
+    // What the agent can draw in a reply; loaded only when it is asked for.
+    path: 'catalogue',
+    loadComponent: () => import('./catalogue/catalogue-page').then((page) => page.CataloguePage),
+  },
   { path: '**', redirectTo: '' },
 ];

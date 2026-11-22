@@ -46,6 +46,22 @@
   --color-danger-bg: light-dark(#f6dccf, #3b1711);
   --color-scrim: light-dark(rgb(35 21 11 / 0.45), rgb(0 0 0 / 0.62));
   --color-shadow: light-dark(rgb(74 44 18 / 0.24), rgb(0 0 0 / 0.6));
+  --color-good: light-dark(#3d6b1c, #9cc56a); /* what went well, in the generated interface */
+  --color-good-bg: light-dark(#e3ecd0, #1f2a12);
+
+  /*
+   * Charts: the series of a chart, in this order, never cycled. Each set was checked
+   * against its page (lightness, chroma, colour-blind separation, 3:1 contrast); change
+   * one and check again. The sixth is the neutral of "the rest".
+   */
+  --chart-1: light-dark(#bf430d, #e06a22);
+  --chart-2: light-dark(#1f6aa8, #3d97c9);
+  --chart-3: light-dark(#a8780c, #bd8a10);
+  --chart-4: light-dark(#8a3a78, #b866a6);
+  --chart-5: light-dark(#4f7d1e, #78a236);
+  --chart-rest: light-dark(#8c7a68, #7d6b5a);
+  /* Map tiles are tinted like the page: sepia by day, turned to night after dark. */
+  --map-filter: sepia(0.4) saturate(0.85) contrast(0.95);
 
   /*
    * Type. Three families, one job each: the serif names things (titles, questions,
@@ -58,11 +74,16 @@
   --font-mono:
     'IBM Plex Mono', ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
 
-  /* Five sizes, no more. */
+  /* Six sizes, no more. */
   --text-label: 0.75rem; /* mono capitals: labels, dates, hints */
+  --text-small: 0.9375rem; /* sans: what goes with a reply's interface: cells, captions, hints */
   --text-body: 1.125rem; /* sans: replies, the composer, errors */
   --text-entry: 1.25rem; /* serif: conversations, models */
-  --text-brand: clamp(1.75rem, 1.6rem + 0.62vw, 2rem); /* serif: the name of the app */
+  --text-brand: clamp(
+    1.75rem,
+    1.6rem + 0.62vw,
+    2rem
+  ); /* serif: the name of the app, a heading or a figure in a reply */
   --text-hero: clamp(3.5rem, 1.5rem + 8vw, 6.5rem); /* serif: the blank page */
 
   --type-label: 500 var(--text-label) / 1.3 var(--font-mono);
@@ -123,4 +144,11 @@
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
+  --map-filter: invert(1) hue-rotate(180deg) sepia(0.85) saturate(0.6) brightness(0.78);
+}
+/* A filter is not a colour: light-dark() cannot pick it, so the night one is said twice. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --map-filter: invert(1) hue-rotate(180deg) sepia(0.85) saturate(0.6) brightness(0.78);
+  }
 }

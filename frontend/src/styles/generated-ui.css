@@ -1,0 +1,1151 @@
+/*
+ * The interface the agent draws in a reply (src/app/openui). Its components are created
+ * by the OpenUI renderer, outside any template of the app, so their styles are global;
+ * every class starts with gui-. Only tokens are used: both themes come for free.
+ *
+ * The same voice as the thread: the serif names things, the sans is read, the mono
+ * labels. Blocks sit on the page, set apart by hairlines rather than boxed.
+ */
+
+/* A column of blocks: the reply, a tab, a section. */
+.gui {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+  font-size: var(--text-body);
+  line-height: var(--leading-reading);
+}
+.gui > openui-render-node {
+  display: contents;
+}
+.gui-raw {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: var(--leading-reading);
+}
+.gui-label {
+  font: var(--type-label);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+.gui-caption {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+  color: var(--color-ink-soft);
+}
+.gui-arrow {
+  color: var(--color-accent-text);
+  transition: translate var(--fast) var(--ease-out);
+}
+/* While the reply is being written, a caret follows it. */
+.gui-caret {
+  display: block;
+  width: 0.5em;
+  height: 1em;
+  margin-top: var(--space-3);
+  background: var(--color-accent);
+  animation: gui-blink 0.8s ease-in-out infinite alternate;
+}
+@keyframes gui-blink {
+  to {
+    opacity: 0.25;
+  }
+}
+
+/* Text */
+.gui-heading {
+  margin: var(--space-3) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--text-brand);
+  font-weight: 400;
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-display);
+  text-wrap: balance;
+}
+.gui > :first-child .gui-heading {
+  margin-top: 0;
+}
+.gui-heading-sub {
+  font-size: var(--text-entry);
+}
+.gui-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.gui-text + .gui-text {
+  margin-top: var(--space-4);
+}
+.gui-text-lead {
+  font: 400 var(--text-entry) / var(--leading-text) var(--font-display);
+  letter-spacing: var(--tracking-display);
+}
+.gui-text-muted {
+  font-size: var(--text-small);
+  color: var(--color-ink-soft);
+}
+.gui-link {
+  color: var(--color-accent-text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+.gui-link:hover {
+  text-decoration-thickness: 2px;
+}
+.gui-code {
+  padding: 0.1em 0.35em;
+  border-radius: var(--radius-sm);
+  background: var(--color-hover);
+}
+/* A citation: the number of its source, raised, in the mono. */
+.gui-cite {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  margin-inline: 0.1em;
+  padding-inline: 0.25em;
+  vertical-align: 0.25em;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+  font: 500 var(--text-label) / 1 var(--font-mono);
+  text-decoration: none;
+}
+.gui-cite:hover {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.gui-callout {
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--tone);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--tone-bg);
+}
+.gui-tone-info {
+  --tone: var(--color-rule-strong);
+  --tone-bg: var(--color-hover);
+}
+.gui-tone-success {
+  --tone: var(--color-good);
+  --tone-bg: var(--color-good-bg);
+}
+.gui-tone-warning {
+  --tone: var(--color-accent);
+  --tone-bg: var(--color-accent-soft);
+}
+.gui-tone-danger {
+  --tone: var(--color-danger);
+  --tone-bg: var(--color-danger-bg);
+}
+.gui-callout p {
+  margin: 0;
+}
+.gui-callout-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+}
+.gui-callout-title .gui-label {
+  color: var(--color-ink);
+}
+.gui-callout-text {
+  margin-top: var(--space-1) !important;
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+}
+
+.gui-quote {
+  margin: 0;
+  padding-left: var(--space-5);
+  border-left: 1px solid var(--color-accent);
+}
+.gui-quote blockquote {
+  margin: 0 0 var(--space-2);
+  font: italic 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+  text-wrap: balance;
+}
+
+.gui-codeblock {
+  margin: 0;
+  border: var(--rule);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+.gui-codeblock figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-bottom: var(--rule);
+}
+.gui-codeblock pre {
+  margin: 0;
+  padding: var(--space-4);
+  overflow-x: auto;
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+}
+.gui-chip {
+  height: var(--control-sm);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-full);
+  background: transparent;
+  font: var(--type-label);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.gui-chip:hover {
+  background: var(--color-hover);
+}
+.gui-separator {
+  width: 100%;
+  margin: var(--space-2) 0;
+  border: 0;
+  border-top: var(--rule);
+}
+
+/* Links: pages to open, and the sources under an answer. */
+.gui-links,
+.gui-sources ol,
+.gui-tags,
+.gui-cards,
+.gui-followups ul,
+.gui-map-places {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gui-links {
+  border-top: var(--rule);
+}
+.gui-linkcard {
+  position: relative;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-6) var(--space-3) 0;
+  border-bottom: var(--rule);
+  color: inherit;
+  text-decoration: none;
+}
+.gui-linkcard-title {
+  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+}
+.gui-linkcard-text {
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+  color: var(--color-ink-soft);
+}
+.gui-linkcard .gui-arrow {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-1);
+}
+.gui-linkcard:hover .gui-linkcard-title {
+  color: var(--color-accent-text);
+}
+.gui-linkcard:hover .gui-arrow {
+  translate: 2px -2px;
+}
+.gui-sources {
+  padding-top: var(--space-4);
+  border-top: var(--rule);
+}
+.gui-sources > p {
+  margin: 0 0 var(--space-2);
+}
+.gui-sources ol {
+  display: grid;
+  gap: var(--space-1);
+  counter-reset: source;
+}
+.gui-sources a {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-block: var(--space-1);
+  color: inherit;
+  text-decoration: none;
+  counter-increment: source;
+}
+.gui-sources a::before {
+  content: counter(source);
+  flex: none;
+  min-width: 1.25rem;
+  font: 500 var(--text-label) / 1 var(--font-mono);
+  color: var(--color-accent-text);
+}
+.gui-source-title {
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+  text-decoration: underline;
+  text-decoration-color: var(--color-rule-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+.gui-sources a:hover .gui-source-title {
+  color: var(--color-accent-text);
+  text-decoration-color: currentColor;
+}
+.gui-sources .gui-label {
+  flex: none;
+}
+
+.gui-image {
+  margin: 0;
+}
+.gui-image img,
+.gui-gallery img,
+.gui-card > img {
+  display: block;
+  width: 100%;
+  border-radius: var(--radius-md);
+  background: var(--color-hover);
+  object-fit: cover;
+}
+.gui-image img {
+  max-height: 28rem;
+}
+.gui-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--space-2);
+}
+.gui-gallery img {
+  aspect-ratio: 4 / 3;
+}
+.gui-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.gui-tag {
+  width: fit-content;
+  padding: 0.3em 0.75em;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-full);
+  font: var(--type-label);
+}
+
+/* Tables */
+.gui-table {
+  margin: 0;
+  min-width: 0;
+}
+.gui-table-scroll {
+  overflow-x: auto;
+}
+.gui table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+}
+.gui th {
+  padding: var(--space-2) var(--space-4) var(--space-2) 0;
+  border-bottom: var(--rule-ink);
+  font: var(--type-label);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--color-ink-soft);
+  white-space: nowrap;
+}
+.gui td {
+  padding: var(--space-3) var(--space-4) var(--space-3) 0;
+  border-bottom: var(--rule);
+  vertical-align: top;
+}
+.gui th:last-child,
+.gui td:last-child {
+  padding-right: 0;
+}
+.gui .gui-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gui-facts {
+  margin: 0;
+  border-top: var(--rule);
+}
+.gui-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding-block: var(--space-2);
+  border-bottom: var(--rule);
+}
+.gui-facts dt {
+  color: var(--color-ink-soft);
+}
+.gui-facts dd {
+  margin: 0;
+  text-align: right;
+}
+
+.gui-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: var(--space-5);
+  margin: 0;
+  padding-block: var(--space-4);
+  border-block: var(--rule);
+}
+.gui-metric dd {
+  display: flex;
+  flex-direction: column;
+  margin: var(--space-1) 0 0;
+}
+.gui-metric-value {
+  font-family: var(--font-display);
+  font-size: var(--text-brand);
+  font-weight: 400;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-display);
+  white-space: nowrap;
+}
+.gui-metric-detail {
+  margin-top: var(--space-1);
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+  color: var(--color-ink-soft);
+}
+.gui-trend-up > span {
+  color: var(--color-good);
+}
+.gui-trend-down > span {
+  color: var(--color-danger);
+}
+
+/* Lists */
+.gui-list,
+.gui-steps,
+.gui-timeline {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: item;
+}
+.gui-list > li {
+  position: relative;
+  padding-left: var(--space-5);
+  counter-increment: item;
+}
+.gui-list > li::before {
+  content: '';
+  position: absolute;
+  left: 0.2rem;
+  top: 0.72em;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+.gui-list-number > li {
+  padding-left: var(--space-6);
+}
+.gui-list-number > li::before {
+  content: counter(item, decimal-leading-zero);
+  top: 0.45em;
+  left: 0;
+  width: auto;
+  height: auto;
+  background: none;
+  font: 500 var(--text-label) / 1 var(--font-mono);
+  color: var(--color-accent-text);
+}
+.gui-list-title,
+.gui-step-title {
+  display: block;
+}
+.gui-list-text,
+.gui-step-text {
+  display: block;
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+  color: var(--color-ink-soft);
+}
+.gui-list-action {
+  display: block;
+  width: 100%;
+  padding: 0 var(--space-6) 0 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+}
+.gui-list-action .gui-arrow {
+  position: absolute;
+  top: 0;
+  right: var(--space-1);
+}
+.gui-list-action:hover:enabled .gui-list-title {
+  color: var(--color-accent-text);
+}
+.gui-list-action:hover:enabled .gui-arrow {
+  translate: 3px 0;
+}
+.gui-list-action:disabled {
+  cursor: default;
+}
+
+.gui-steps > li,
+.gui-timeline > li {
+  position: relative;
+  padding: 0 0 var(--space-4) var(--space-7);
+  counter-increment: item;
+}
+.gui-steps > li:last-child,
+.gui-timeline > li:last-child {
+  padding-bottom: 0;
+}
+/* The line that leads from one step to the next. */
+.gui-steps > li::after,
+.gui-timeline > li::after {
+  content: '';
+  position: absolute;
+  left: 0.9375rem;
+  top: 2.25rem;
+  bottom: 0.125rem;
+  width: 1px;
+  background: var(--color-rule-strong);
+}
+.gui-steps > li:last-child::after,
+.gui-timeline > li:last-child::after {
+  display: none;
+}
+.gui-steps > li::before {
+  content: counter(item);
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--color-ink);
+  border-radius: 50%;
+  font: 500 var(--text-label) / 1 var(--font-mono);
+}
+.gui-step-title {
+  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+  padding-top: 0.2rem;
+}
+.gui-timeline > li::before {
+  content: '';
+  position: absolute;
+  left: 0.6875rem;
+  top: 0.3rem;
+  width: 0.5625rem;
+  height: 0.5625rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+.gui-timeline > li::after {
+  top: 1.25rem;
+}
+.gui-timeline .gui-label {
+  display: block;
+  color: var(--color-accent-text);
+}
+
+/* Cards */
+.gui-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-4);
+}
+.gui-card {
+  display: flex;
+  flex-direction: column;
+  border: var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+.gui-card > img {
+  aspect-ratio: 16 / 10;
+  border-radius: 0;
+}
+.gui-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+.gui-card-title {
+  margin: 0;
+  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+  letter-spacing: var(--tracking-display);
+}
+.gui-card-text {
+  flex: 1;
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+  color: var(--color-ink-soft);
+}
+.gui-card .gui-buttons {
+  margin-top: var(--space-2);
+}
+
+/* Buttons and follow-ups */
+.gui-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.gui-buttons > openui-render-node {
+  display: contents;
+}
+.gui-btn {
+  min-height: var(--control);
+  padding: 0 var(--space-5);
+  border: 1px solid var(--color-solid);
+  border-radius: var(--radius-full);
+  background: var(--color-solid);
+  color: var(--color-on-solid);
+  font-size: var(--text-small);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--fast),
+    border-color var(--fast),
+    color var(--fast),
+    scale var(--fast) var(--ease-swing);
+}
+.gui-btn:hover:enabled {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.gui-btn:active:enabled {
+  scale: 0.97;
+}
+.gui-btn-secondary {
+  border-color: var(--color-rule-strong);
+  background: transparent;
+  color: var(--color-ink);
+}
+.gui-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.gui-followups {
+  padding-top: var(--space-4);
+  border-top: var(--rule);
+}
+.gui-followups > p {
+  margin: 0 0 var(--space-1);
+}
+.gui-followups button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-2) var(--space-1) var(--space-2) 0;
+  border: 0;
+  border-bottom: var(--rule);
+  background: none;
+  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+  text-align: left;
+  cursor: pointer;
+}
+.gui-followups li:last-child button {
+  border-bottom: 0;
+}
+.gui-followups button:hover:enabled {
+  color: var(--color-accent-text);
+}
+.gui-followups button:hover:enabled .gui-arrow {
+  translate: 3px 0;
+}
+.gui-followups button:disabled {
+  cursor: default;
+  color: var(--color-ink-soft);
+}
+
+/* Tabs and sections */
+.gui-tablist {
+  display: flex;
+  gap: var(--space-5);
+  margin-bottom: var(--space-4);
+  border-bottom: var(--rule);
+  overflow-x: auto;
+}
+.gui-tablist button {
+  flex: none;
+  padding: var(--space-2) 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  font: var(--type-label);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+}
+.gui-tablist button:hover {
+  color: var(--color-ink);
+}
+.gui-tablist button[aria-selected='true'] {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-ink);
+}
+.gui-tabpanel[hidden] {
+  display: none;
+}
+.gui-accordion {
+  border-top: var(--rule);
+}
+.gui-accordion details {
+  border-bottom: var(--rule);
+}
+.gui-accordion summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+  cursor: pointer;
+  list-style: none;
+}
+.gui-accordion summary::-webkit-details-marker {
+  display: none;
+}
+.gui-accordion summary::after {
+  content: '+';
+  font: 400 var(--text-entry) / 1 var(--font-mono);
+  color: var(--color-accent-text);
+  transition: rotate var(--medium) var(--ease-swing);
+}
+.gui-accordion details[open] > summary::after {
+  rotate: 45deg;
+}
+.gui-accordion details > .gui {
+  padding-bottom: var(--space-4);
+}
+
+/* Forms */
+.gui-form {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+.gui-form > openui-render-node {
+  display: contents;
+}
+.gui-field {
+  display: grid;
+  gap: var(--space-2);
+}
+.gui-field > openui-render-node {
+  display: grid;
+  gap: var(--space-2);
+}
+.gui-field-label {
+  font: var(--type-label);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+.gui-field-hint,
+.gui-field-error {
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+  color: var(--color-ink-soft);
+}
+.gui-field-error {
+  color: var(--color-danger);
+}
+.gui-input {
+  width: 100%;
+  min-height: var(--control);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  font-size: var(--text-small);
+}
+textarea.gui-input {
+  resize: vertical;
+  line-height: var(--leading-text);
+}
+.gui-input::placeholder {
+  color: var(--color-ink-soft);
+  opacity: 0.75;
+}
+.gui-input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+.gui-options {
+  display: grid;
+  gap: var(--space-2);
+}
+.gui-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+  cursor: pointer;
+}
+.gui-option input {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0.2rem 0 0;
+  accent-color: var(--color-accent);
+}
+.gui-option small {
+  display: block;
+  font-size: var(--text-small);
+  color: var(--color-ink-soft);
+}
+.gui-slider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.gui-slider input {
+  flex: 1;
+  accent-color: var(--color-accent);
+}
+.gui-slider output {
+  min-width: 5ch;
+  font: 500 var(--text-label) / 1 var(--font-mono);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Charts */
+.gui-chart,
+.gui-map {
+  margin: 0;
+  min-width: 0;
+}
+.gui-chart-title {
+  margin-bottom: var(--space-2);
+  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+}
+.gui-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+}
+.gui-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: opacity var(--fast);
+}
+.gui-legend i,
+.gui-tip i {
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 2px;
+}
+.gui-legend b {
+  margin-left: auto;
+  padding-left: var(--space-4);
+  font: 500 var(--text-label) / 1 var(--font-mono);
+}
+.gui-legend-column {
+  flex: 1;
+  flex-direction: column;
+  min-width: 11rem;
+  margin: 0;
+}
+.gui-plot {
+  position: relative;
+}
+.gui-plot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.gui-grid {
+  stroke: var(--color-rule);
+  stroke-width: 1;
+}
+.gui-zero {
+  stroke: var(--color-rule-strong);
+}
+.gui-axis {
+  fill: var(--color-ink-soft);
+  font: 500 11px var(--font-mono);
+}
+.gui-bar,
+.gui-slice {
+  outline-offset: 2px;
+  transition: opacity var(--fast);
+}
+.gui-bar:hover {
+  opacity: 0.8;
+}
+.gui-slice {
+  stroke: var(--color-bg);
+  stroke-width: 2;
+}
+.gui-dim {
+  opacity: 0.35;
+}
+.gui-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gui-area {
+  opacity: 0.16;
+}
+.gui-dot {
+  stroke: var(--color-bg);
+  stroke-width: 2;
+}
+.gui-crosshair {
+  stroke: var(--color-rule-strong);
+  stroke-width: 1;
+}
+.gui-hit {
+  fill: transparent;
+}
+.gui-tip {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  min-width: 8rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-pop);
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+  pointer-events: none;
+  translate: 0.75rem -50%;
+}
+.gui-tip-left {
+  translate: calc(-100% - 0.75rem) -50%;
+}
+.gui-tip span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-ink-soft);
+}
+.gui-tip b {
+  margin-left: auto;
+  padding-left: var(--space-3);
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+.gui-chart-data {
+  margin-top: var(--space-2);
+}
+.gui-chart-data summary {
+  width: fit-content;
+  cursor: pointer;
+}
+.gui-chart-data .gui-table-scroll {
+  margin-top: var(--space-2);
+}
+.gui-pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+}
+.gui-pie svg {
+  flex: none;
+  width: 11rem;
+}
+.gui-pie-total {
+  fill: var(--color-ink);
+  font: 400 26px var(--font-display);
+}
+.gui-ranking {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+.gui-ranking dt {
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+}
+.gui-ranking dd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-1) 0 0;
+}
+.gui-track {
+  flex: 1;
+  height: 0.75rem;
+}
+.gui-track i {
+  display: block;
+  min-width: 2px;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  background: var(--chart-1);
+}
+.gui-ranking b {
+  min-width: 4.5rem;
+  font: 500 var(--text-label) / 1 var(--font-mono);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Map (Leaflet): the tiles are tinted like the page, the pins are ours. */
+.gui-map-canvas {
+  height: 22rem;
+  border: var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--color-wood);
+  overflow: hidden;
+  /* Above the map's own layers, nothing of it covers the page's menus. */
+  isolation: isolate;
+}
+.gui-map-off {
+  display: none;
+}
+.gui-map .leaflet-container {
+  font: inherit;
+  background: var(--color-wood);
+}
+.gui-map .leaflet-tile-pane {
+  filter: var(--map-filter);
+}
+.gui-pin {
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--color-bg);
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: 0 2px 6px var(--color-shadow);
+  font: 500 var(--text-label) / 1 var(--font-mono);
+}
+.gui-route {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 3;
+  stroke-dasharray: 2 7;
+  stroke-linecap: round;
+}
+.gui-map .leaflet-popup-content-wrapper,
+.gui-map .leaflet-popup-tip {
+  background: var(--color-raised);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-pop);
+}
+.gui-map .leaflet-popup-content-wrapper {
+  border-radius: var(--radius-md);
+}
+.gui-map .leaflet-popup-content {
+  display: grid;
+  gap: 2px;
+  margin: var(--space-3) var(--space-4);
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+}
+.gui-map .leaflet-popup-content strong {
+  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+}
+.gui-map .leaflet-container a.leaflet-popup-close-button {
+  color: var(--color-ink-soft);
+}
+.gui-map .leaflet-bar {
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  overflow: hidden;
+}
+.gui-map .leaflet-bar a {
+  border-bottom-color: var(--color-rule);
+  background: var(--color-raised);
+  color: var(--color-ink);
+}
+.gui-map .leaflet-bar a:hover {
+  background: var(--color-selected);
+}
+.gui-map .leaflet-control-attribution {
+  background: color-mix(in srgb, var(--color-raised) 85%, transparent);
+  color: var(--color-ink-soft);
+  font: 500 var(--text-label) / 1.6 var(--font-mono);
+}
+.gui-map .leaflet-control-attribution a {
+  color: inherit;
+}
+.gui-map-places {
+  display: grid;
+  margin-top: var(--space-2);
+}
+.gui-map-places button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) 0;
+  border: 0;
+  border-bottom: var(--rule);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.gui-map-places .gui-list-text {
+  grid-column: 2;
+}
+.gui-map-places button:hover .gui-list-title {
+  color: var(--color-accent-text);
+}
+.gui-pin-number {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.15rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font: 500 var(--text-label) / 1 var(--font-mono);
+}
+
+@media (max-width: 40rem) {
+  .gui-form {
+    padding: var(--space-4);
+  }
+  .gui-map-canvas {
+    height: 18rem;
+  }
+}

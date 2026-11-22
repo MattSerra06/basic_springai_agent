@@ -59,6 +59,13 @@ agent:
     trigger-tokens: 60000
     # ...keeping this much of the most recent conversation verbatim.
     keep-tokens: 20000
+  # The interface of the replies (OpenUI, its open-source part only: no gateway, no key).
+  openui:
+    # When true the model writes its replies in OpenUI Lang and the frontend draws
+    # them (tables, charts, maps, forms). Set to false for plain-text replies.
+    enabled: true
+    # Generated from the frontend's catalogue: `npm run openui:prompt` in frontend/.
+    prompt: classpath:openui/system-prompt.txt
   # Web tools, backed by the Linkup API (https://docs.linkup.so).
   linkup:
     # Never commit a key: export LINKUP_API_KEY before starting the app. Without
