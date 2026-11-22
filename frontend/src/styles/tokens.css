@@ -38,9 +38,9 @@
   --color-on-accent: light-dark(#fff8ec, #1c0e04);
   --color-accent-text: light-dark(#8f2f06, #ff9a56); /* orange, as text */
 
-  --color-sun: light-dark(#e8962e, #a8480f); /* the record of the blank page: noon · embers */
-  --color-sun-deep: light-dark(#d46018, #5a2408);
-  --color-sheen: light-dark(rgb(255 250 235 / 0.34), rgb(255 200 140 / 0.16)); /* light on it */
+  --color-sun: light-dark(#e8962e, #a8480f); /* the sun of the blank page: noon · embers */
+  --color-sun-deep: light-dark(#d46018, #5a2408); /* the same, towards the horizon */
+  --color-sheen: light-dark(rgb(255 250 235 / 0.34), rgb(255 200 140 / 0.16)); /* its heart */
   --color-glow: light-dark(rgb(255 176 82 / 0.36), rgb(255 140 50 / 0.13));
   --color-danger: light-dark(#96211a, #ffa091);
   --color-danger-bg: light-dark(#f6dccf, #3b1711);

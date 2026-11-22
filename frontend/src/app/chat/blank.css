@@ -1,6 +1,6 @@
 /*
- * The blank page: a headline, and a record half out of its sleeve — the sleeve being the
- * field of the composer, just below, which the record slips behind.
+ * The blank page: a headline, and the sun coming up behind the field of the composer,
+ * just below, which is its horizon.
  */
 .blank .thread {
   padding-block: 0 var(--space-6);
@@ -19,55 +19,51 @@
   letter-spacing: var(--tracking-display);
   text-wrap: balance;
 }
-/* The record itself does not turn: the light on it stays where the window is. */
-.disc {
+/*
+ * The sun: a square that holds the disc and, around it, its rays. The field is as far
+ * below the headline as the thread is padded, so the horizon crosses the square at 60% of
+ * its height whatever its size; what would show under the field is cut off.
+ */
+.sun {
   position: absolute;
-  right: var(--space-5);
+  right: 0;
   bottom: 0;
-  width: clamp(9rem, 36%, 20rem);
+  width: clamp(11rem, 46%, 22rem);
   aspect-ratio: 1;
-  border-radius: 50%;
-  background:
-    conic-gradient(
-      from 25deg,
-      transparent 0 6%,
-      var(--color-sheen) 11%,
-      transparent 17% 56%,
-      var(--color-sheen) 61%,
-      transparent 67%
-    ),
-    linear-gradient(140deg, var(--color-sun), var(--color-sun-deep));
-  box-shadow: var(--shadow-field);
-  translate: 0 42%;
-  animation: slip 1.2s var(--ease-out) backwards;
+  clip-path: inset(0 0 20%);
+  translate: 0 calc(40% + var(--space-6));
+  animation: dawn 1.4s var(--ease-out) backwards;
 }
-@keyframes slip {
+@keyframes dawn {
   from {
-    translate: 0 85%;
+    translate: 0 80%;
   }
 }
-/* What turns, at 33⅓ rpm: the grooves and the label, with its two lines of print. */
-.disc::before {
+/*
+ * The rays: fine strokes, one long, one short, all the way round. They are the dashes of
+ * two circles, used as a stencil over the colour of the sun, and they turn very slowly.
+ */
+.sun::before {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle closest-side, var(--color-bg) 0 3.5%, transparent 4.5%),
-    linear-gradient(var(--color-sun), var(--color-sun)) 50% 39% / 15% 1.2% no-repeat,
-    linear-gradient(var(--color-sun), var(--color-sun)) 50% 42.5% / 9% 1.2% no-repeat,
-    radial-gradient(circle closest-side, var(--color-sun-deep) 0 33%, transparent 34%),
-    repeating-radial-gradient(circle closest-side, transparent 0 2.4%, var(--color-rule) 2.4% 2.9%);
-  animation: spin 1.8s linear infinite;
+  background: var(--color-sun);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='black'%3E%3Ccircle cx='50' cy='50' r='41' pathLength='360' stroke-width='14' stroke-dasharray='.8 19.2' stroke-dashoffset='-4.6'/%3E%3Ccircle cx='50' cy='50' r='37' pathLength='360' stroke-width='6' stroke-dasharray='.8 19.2' stroke-dashoffset='-14.6'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+  animation: turn 180s linear infinite;
 }
-@keyframes spin {
+@keyframes turn {
   to {
     rotate: 1turn;
   }
 }
-
-@media (max-width: 48rem) {
-  .disc {
-    right: var(--space-2);
-  }
+/* The disc: full, paler at the top, deeper towards the horizon, with a brighter heart. */
+.sun::after {
+  content: '';
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 30%, var(--color-sheen), transparent 60%),
+    linear-gradient(var(--color-sun), var(--color-sun-deep) 80%);
 }

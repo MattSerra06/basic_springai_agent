@@ -1,16 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- The disc of the blank page: a record the colour of the sun (the day values of the sun tokens). -->
+  <!-- The sun of the blank page: a disc and its rays, one long, one short (the day values of the sun tokens). -->
   <defs>
-    <linearGradient id="sun" x1="0.1" y1="0" x2="0.9" y2="1">
+    <linearGradient id="sun" gradientUnits="userSpaceOnUse" x1="6.4" y1="0" x2="57.6" y2="64">
       <stop offset="0" stop-color="#e8962e" />
       <stop offset="1" stop-color="#d46018" />
     </linearGradient>
   </defs>
-  <circle cx="32" cy="32" r="30" fill="url(#sun)" />
-  <g fill="none" stroke="#23150b" stroke-opacity="0.22" stroke-width="1.5">
-    <circle cx="32" cy="32" r="23.5" />
-    <circle cx="32" cy="32" r="17" />
-    <circle cx="32" cy="32" r="10.5" />
+  <circle cx="32" cy="32" r="13.5" fill="url(#sun)" />
+  <g fill="none" stroke="url(#sun)" stroke-width="3">
+    <path d="M32 12.5L32 1M45.79 18.21L53.92 10.08M51.5 32L63 32M45.79 45.79L53.92 53.92M32 51.5L32 63M18.21 45.79L10.08 53.92M12.5 32L1 32M18.21 18.21L10.08 10.08" />
+    <path d="M39.46 13.98L41.76 8.44M50.02 24.54L55.56 22.24M50.02 39.46L55.56 41.76M39.46 50.02L41.76 55.56M24.54 50.02L22.24 55.56M13.98 39.46L8.44 41.76M13.98 24.54L8.44 22.24M24.54 13.98L22.24 8.44" />
   </g>
-  <circle cx="32" cy="32" r="4" fill="#f4ead7" />
 </svg>
