@@ -22,7 +22,8 @@
 .jump {
   position: absolute;
   bottom: calc(100% + var(--space-3));
-  left: calc(50% - var(--control) / 2);
+  left: 50%;
+  translate: -50% 0; /* centred whatever its size: it is larger where there is no pointer */
   border-color: var(--color-rule-strong);
   border-radius: var(--radius-full);
   background: var(--color-raised);

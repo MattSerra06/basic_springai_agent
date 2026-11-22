@@ -229,7 +229,9 @@ export class Chat {
 
   private lookBelow(): void {
     const el = this.scroller().nativeElement;
-    this.below.set(el.scrollHeight - el.scrollTop - el.clientHeight > FAR_FROM_END);
+    // The blank page does not scroll: what hangs out of it there is the sun, not a thread.
+    const far = el.scrollHeight - el.scrollTop - el.clientHeight > FAR_FROM_END;
+    this.below.set(far && !this.blank());
   }
 
   protected onKeydown(event: KeyboardEvent): void {

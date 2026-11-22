@@ -110,15 +110,15 @@
   </div>
 
   <form class="composer" (submit)="$event.preventDefault(); send()">
-    @if (below()) {
+    @if (below() && !blank()) {
       <button
         type="button"
-        class="btn jump"
+        class="btn btn-sm jump"
         aria-label="Aller à la fin de la conversation"
         title="Aller à la fin"
         (click)="toEnd()"
       >
-        <svg class="icon" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
           <path d="M10 4v11.5M4.75 10.5 10 15.75l5.25-5.25" />
         </svg>
       </button>
