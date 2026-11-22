@@ -113,11 +113,11 @@ class AgentIntegrationTest {
 
     @Test
     void aMessageIsAnsweredWithTheModelAndReasoningEffortItAsksFor() {
-        ChatService.RunStarted started = chatService.start(null, "Bonjour", "gpt-6.2-astra", "high");
+        ChatService.RunStarted started = chatService.start(null, "Bonjour", "gpt-6.1-terra", "high");
         eventsOf(started.runId());
 
         OpenAiResponsesChatOptions asked = (OpenAiResponsesChatOptions) model.prompts.getLast().getOptions();
-        assertThat(asked.getModel()).isEqualTo("gpt-6.2-astra");
+        assertThat(asked.getModel()).isEqualTo("gpt-6.1-terra");
         assertThat(asked.getReasoningEffort()).isEqualTo("high");
 
         // Without a choice, the defaults of the configuration

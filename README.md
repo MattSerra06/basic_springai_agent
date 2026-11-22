@@ -13,7 +13,7 @@ Monorepo d'un agent conversationnel en streaming :
   ouverte le temps que le modèle travaille, et une réponse continue même si on recharge
   la page ou qu'on change de conversation.
 - **Choix du modèle et du raisonnement** : chaque message part avec le modèle choisi dans
-  le menu du champ de saisie (GPT-6.2 Sol ou Astra) et le niveau de raisonnement pris
+  le menu du champ de saisie (GPT-6.2 Sol, GPT-6.1 Terra ou GPT-6 Luna) et le niveau de raisonnement pris
   dans son sous-menu. Les
   choix proposés viennent de la configuration du backend.
 - **Sessions** (Spring AI Session) : chaque conversation est une session dont l'historique

@@ -65,11 +65,11 @@ class ChatControllerTest {
 
     @Test
     void passesTheChosenModelAndReasoningEffortOn() throws Exception {
-        given(chatService.start("s1", "Hi", "gpt-6.2-astra", "high")).willReturn(new ChatService.RunStarted("r1",
+        given(chatService.start("s1", "Hi", "gpt-6.1-terra", "high")).willReturn(new ChatService.RunStarted("r1",
                 new SessionView("s1", "Hi", Instant.parse("2026-01-01T00:00:00Z"))));
 
         mockMvc.perform(post("/api/runs").contentType(MediaType.APPLICATION_JSON).content("""
-                        {"sessionId":"s1","message":"Hi","model":"gpt-6.2-astra","reasoningEffort":"high"}"""))
+                        {"sessionId":"s1","message":"Hi","model":"gpt-6.1-terra","reasoningEffort":"high"}"""))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.runId").value("r1"));
     }
@@ -80,7 +80,10 @@ class ChatControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.models[0].id").value("gpt-6.2-sol"))
                 .andExpect(jsonPath("$.models[0].label").value("GPT-6.2 Sol"))
-                .andExpect(jsonPath("$.models[1].id").value("gpt-6.2-astra"))
+                .andExpect(jsonPath("$.models[1].id").value("gpt-6.1-terra"))
+                .andExpect(jsonPath("$.models[1].label").value("GPT-6.1 Terra"))
+                .andExpect(jsonPath("$.models[2].id").value("gpt-6-luna"))
+                .andExpect(jsonPath("$.models.length()").value(3))
                 .andExpect(jsonPath("$.defaultModel").value("gpt-6.2-sol"))
                 .andExpect(jsonPath("$.reasoningEfforts[0]").value("low"))
                 .andExpect(jsonPath("$.reasoningEfforts[3]").value("xhigh"))

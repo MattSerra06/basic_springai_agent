@@ -43,8 +43,10 @@ agent:
   models:
     - id: gpt-6.2-sol
       label: GPT-6.2 Sol
-    - id: gpt-6.2-astra
-      label: GPT-6.2 Astra
+    - id: gpt-6.1-terra
+      label: GPT-6.1 Terra
+    - id: gpt-6-luna
+      label: GPT-6 Luna
   reasoning:
     # Efforts offered by the slider, from the lightest to the heaviest, as the
     # Responses API names them (reasoning.effort).
