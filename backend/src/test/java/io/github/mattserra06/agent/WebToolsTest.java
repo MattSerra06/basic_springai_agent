@@ -103,11 +103,12 @@ class WebToolsTest {
                 .orElseThrow();
         JsonNode schema = JsonMapper.shared().readTree(search.getToolDefinition().inputSchema());
 
+        // Its own parameters, and the line every tool asks for: what the call is for
         assertThat(schema.path("properties").propertyNames()).containsExactlyInAnyOrder("query", "depth",
                 "outputType", "structuredOutputSchema", "includeSources", "includeInlineCitations", "includeImages",
-                "fromDate", "toDate", "sinceDays", "includeDomains", "excludeDomains", "maxResults");
+                "fromDate", "toDate", "sinceDays", "includeDomains", "excludeDomains", "maxResults", "activity");
         assertThat(schema.path("required")).extracting(JsonNode::asString)
-                .containsExactlyInAnyOrder("query", "depth", "outputType");
+                .containsExactlyInAnyOrder("query", "depth", "outputType", "activity");
         assertThat(schema.path("properties").path("includeDomains").path("type").asString()).isEqualTo("array");
         assertThat(schema.path("properties").path("depth").path("description").asString())
                 .contains("flash", "fast", "standard", "deep");
@@ -120,10 +121,12 @@ class WebToolsTest {
                               "content": "Revenue was $245.1 billion.", "favicon": ""}]}""");
         model.repliesWith(callThenAnswer("linkup_search", """
                 {"query": "Microsoft 2024 revenue", "depth": "fast", "outputType": "searchResults",
-                 "includeDomains": ["microsoft.com"], "maxResults": 3}""", "245,1 milliards."));
+                 "includeDomains": ["microsoft.com"], "maxResults": 3,
+                 "activity": " Je cherche le chiffre d'affaires 2024 de Microsoft "}""", "245,1 milliards."));
 
         List<ChatEvent> events = converse("Quel est le chiffre d'affaires 2024 de Microsoft ?");
 
+        // What the call is for is told to the user, and is not an argument of the tool
         assertThat(linkup.call().authorization()).isEqualTo("Bearer " + FakeLinkup.API_KEY);
         assertThat(linkup.call().json()).isEqualTo(JsonMapper.shared().readTree("""
                 {"q": "Microsoft 2024 revenue", "depth": "fast", "outputType": "searchResults",
@@ -134,8 +137,9 @@ class WebToolsTest {
         assertThat(result.path("sources")).isEqualTo(JsonMapper.shared().readTree("""
                 [{"name": "Annual Report", "url": "https://www.microsoft.com/ar24",
                   "content": "Revenue was $245.1 billion."}]"""));
-        assertThat(events).containsExactly(new ChatEvent.Text("Je cherche."), new ChatEvent.Text("\n\n245,1 milliards."),
-                new ChatEvent.Done(false));
+        assertThat(events).containsExactly(new ChatEvent.Text("Je cherche."),
+                new ChatEvent.ToolCall("linkup_search", "Je cherche le chiffre d'affaires 2024 de Microsoft"),
+                new ChatEvent.Text("\n\n245,1 milliards."), new ChatEvent.Done(false));
     }
 
     @Test
@@ -148,8 +152,9 @@ class WebToolsTest {
 
         assertThat(toolResult()).startsWith("Linkup error: The Linkup account has no credits left")
                 .doesNotContain(FakeLinkup.API_KEY);
-        assertThat(events).containsExactly(new ChatEvent.Text("Je cherche."), new ChatEvent.Text("\n\nPlus de crédits."),
-                new ChatEvent.Done(false));
+        // A call that does not say what it is for is reported all the same
+        assertThat(events).containsExactly(new ChatEvent.Text("Je cherche."), new ChatEvent.ToolCall("linkup_fetch", ""),
+                new ChatEvent.Text("\n\nPlus de crédits."), new ChatEvent.Done(false));
     }
 
     @Test

@@ -1,4 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { thought, toolStarted, writing } from './activity';
 import { ChatService, Message, RunOptions, RunSettings, Session } from './chat.service';
 
 /**
@@ -227,7 +228,20 @@ export class ChatStore {
     this.unwatch = this.api.watch(runId, {
       text: (text) => {
         losses = 0;
-        this.updateReply((reply) => ({ ...reply, content: reply.content + text }));
+        this.updateReply((reply) => ({
+          ...reply,
+          content: reply.content + text,
+          activity: writing(reply.activity),
+        }));
+      },
+      thinking: (text) => {
+        this.updateReply((reply) => ({ ...reply, activity: thought(reply.activity, text) }));
+      },
+      tool: (name, activity) => {
+        this.updateReply((reply) => ({
+          ...reply,
+          activity: toolStarted(reply.activity, name, activity),
+        }));
       },
       done: (interrupted) => {
         if (interrupted) {

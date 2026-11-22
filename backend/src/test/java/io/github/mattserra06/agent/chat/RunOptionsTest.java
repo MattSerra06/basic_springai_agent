@@ -15,7 +15,7 @@ class RunOptionsTest {
 
     private final RunOptions options = new RunOptions(new AgentProperties("prompt", "user",
             List.of(new AgentProperties.Model("sol", "Sol"), new AgentProperties.Model("astra", "Astra")),
-            new AgentProperties.Reasoning(List.of("low", "medium", "high"), "medium"),
+            new AgentProperties.Reasoning(List.of("low", "medium", "high"), "medium", "auto"),
             new AgentProperties.Compaction(100, 10), Duration.ofSeconds(15)));
 
     @Test
@@ -30,9 +30,19 @@ class RunOptionsTest {
 
     @Test
     void usesTheDefaultsForWhatARequestDoesNotChoose() {
-        assertThat(options.select(null, null)).isEqualTo(new RunOptions.Selection("sol", "medium"));
-        assertThat(options.select("astra", null)).isEqualTo(new RunOptions.Selection("astra", "medium"));
-        assertThat(options.select(null, "high")).isEqualTo(new RunOptions.Selection("sol", "high"));
+        assertThat(options.select(null, null)).isEqualTo(new RunOptions.Selection("sol", "medium", "auto"));
+        assertThat(options.select("astra", null)).isEqualTo(new RunOptions.Selection("astra", "medium", "auto"));
+        assertThat(options.select(null, "high")).isEqualTo(new RunOptions.Selection("sol", "high", "auto"));
+    }
+
+    @Test
+    void asksForNoSummaryOfTheReasoningWhenNoneIsConfigured() {
+        RunOptions quiet = new RunOptions(new AgentProperties("prompt", "user",
+                List.of(new AgentProperties.Model("sol", "Sol")),
+                new AgentProperties.Reasoning(List.of("low"), "low", " "),
+                new AgentProperties.Compaction(100, 10), Duration.ofSeconds(15)));
+
+        assertThat(quiet.select(null, null)).isEqualTo(new RunOptions.Selection("sol", "low", null));
     }
 
     @Test
@@ -45,7 +55,7 @@ class RunOptionsTest {
 
     @Test
     void theDefaultEffortMustBeOneOfTheEffortsOnOffer() {
-        assertThatThrownBy(() -> new AgentProperties.Reasoning(List.of("low", "high"), "medium"))
+        assertThatThrownBy(() -> new AgentProperties.Reasoning(List.of("low", "high"), "medium", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("medium");
     }

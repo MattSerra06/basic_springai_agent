@@ -47,6 +47,9 @@
 
 /* The title and the thread scroll together; the scrollbar lies in the right margin. */
 .scroll {
+  /* What is positioned in the thread belongs to it: it scrolls with it and stays under the composer. */
+  position: relative;
+  isolation: isolate;
   flex: 1;
   display: flex;
   flex-direction: column;

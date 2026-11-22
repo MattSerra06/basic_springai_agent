@@ -1,6 +1,7 @@
 package io.github.mattserra06.agent.chat;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -8,6 +9,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.ai.chat.client.ChatClientResponse;
+import org.springframework.ai.chat.messages.part.MessagePart;
+import org.springframework.ai.chat.messages.part.ReasoningPart;
+import org.springframework.ai.chat.messages.part.StreamingParts;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.session.advisor.SessionMemoryAdvisor;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -37,6 +42,7 @@ final class Turn {
     private @Nullable Object round;
     private boolean anyText;
     private boolean separatorPending;
+    private @Nullable Object thinkingStep;
 
     /**
      * @param previous the turn of the same session this one follows, when it is still
@@ -127,6 +133,41 @@ final class Turn {
         separatorPending = false;
         anyText = true;
         return shown;
+    }
+
+    /**
+     * Takes a streamed chunk and returns the piece of the model's reasoning it carries,
+     * empty when it carries none: the summary the provider writes of it, or the reasoning
+     * itself when the provider streams that. Each step of the reasoning is set apart from
+     * the previous one by a blank line.
+     */
+    synchronized String thinking(ChatClientResponse response) {
+        ChatResponse chatResponse = response.chatResponse();
+        if (chatResponse == null || chatResponse.getResult() == null) {
+            return "";
+        }
+        StringBuilder shown = new StringBuilder();
+        for (MessagePart part : chatResponse.getResult().getOutput().getParts()) {
+            if (!(part instanceof ReasoningPart reasoning)) {
+                continue;
+            }
+            String piece = hasText(reasoning.summary()) ? reasoning.summary() : reasoning.text();
+            if (!hasText(piece)) {
+                continue; // the chunk that only brings what the provider wants replayed
+            }
+            // One model response has a step per content block that reasons
+            Object step = Arrays.asList(chatResponse.getMetadata().getId(), StreamingParts.partIndex(part));
+            if (thinkingStep != null && !thinkingStep.equals(step)) {
+                shown.append("\n\n");
+            }
+            thinkingStep = step;
+            shown.append(piece);
+        }
+        return shown.toString();
+    }
+
+    private static boolean hasText(@Nullable String text) {
+        return text != null && !text.isEmpty();
     }
 
     /** The text streamed so far in the round in progress. */

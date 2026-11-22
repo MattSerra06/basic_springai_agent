@@ -35,10 +35,10 @@
     <app-theme-toggle />
   </header>
 
-  <div #scroller class="scroll">
+  <div #scroller class="scroll" (scroll)="onScroll()">
     <h1 class="visually-hidden">{{ title() }}</h1>
 
-    <main class="thread" aria-live="polite">
+    <main #thread class="thread" aria-live="polite">
       @if (store.problem(); as problem) {
         <p class="problem" role="alert">{{ problem }}</p>
       }
@@ -48,9 +48,25 @@
           [class]="message.role"
           [class.error]="message.error"
           [class.live]="store.streaming() && $last"
+          [class.asked]="$index === asked()"
         >
           <span class="who kicker">{{ message.role === 'user' ? 'Vous' : 'Agent' }}</span>
           @let live = store.streaming() && $last;
+          @if (message.role === 'assistant' && !message.error) {
+            <!-- What the agent is doing, while the reply is not there; then the tools it ran. -->
+            @let doing = message.activity | activityLine: live : !!message.content;
+            @if (doing.busy) {
+              <div class="activity">
+                <span class="pending" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                <!-- Drawn anew when the words change, so that they come in. -->
+                @for (text of [doing.text]; track text) {
+                  <span class="doing">{{ text }}</span>
+                }
+              </div>
+            } @else if (doing.text) {
+              <div class="activity kicker">{{ doing.text }}</div>
+            }
+          }
           @if (message.role === 'assistant' && !message.error && message.content) {
             <!-- A reply is an interface the agent wrote, with or without text before it. -->
             @let reply = message.content | replyParts: live;
@@ -72,8 +88,6 @@
             }
           } @else if (message.content) {
             <p>{{ message.content }}</p>
-          } @else if (store.streaming() && $last) {
-            <p class="pending" aria-label="Réponse en cours"><i></i><i></i><i></i><i></i></p>
           }
           @if (message.interrupted) {
             <p class="note">Réponse interrompue.</p>
@@ -96,6 +110,19 @@
   </div>
 
   <form class="composer" (submit)="$event.preventDefault(); send()">
+    @if (below()) {
+      <button
+        type="button"
+        class="btn jump"
+        aria-label="Aller à la fin de la conversation"
+        title="Aller à la fin"
+        (click)="toEnd()"
+      >
+        <svg class="icon" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+          <path d="M10 4v11.5M4.75 10.5 10 15.75l5.25-5.25" />
+        </svg>
+      </button>
+    }
     <div class="field">
       <textarea
         #entry

@@ -132,6 +132,20 @@ class ChatControllerTest {
     }
 
     @Test
+    void namesTheEventsThatSayWhatTheModelIsDoing() throws Exception {
+        Run run = runs.create("s1", "Hi");
+        runs.append(run.id(), new ChatEvent.Thinking("**Plan**"));
+        runs.append(run.id(), new ChatEvent.ToolCall("linkup_search", "Je compare les prix"));
+        runs.append(run.id(), new ChatEvent.Done(false));
+
+        // The map of an event is written in no set order
+        assertThat(events(run.id(), null)).containsSubsequence(
+                "id:1", "event:thinking", "{\"text\":\"**Plan**\"}",
+                "id:2", "event:tool", "id:3", "event:done")
+                .contains("\"name\":\"linkup_search\"", "\"activity\":\"Je compare les prix\"");
+    }
+
+    @Test
     void sendsKeepAliveLinesWhileTheRunIsSilent() throws Exception {
         Run run = runs.create("s1", "Hi");
         MvcResult result = mockMvc.perform(get("/api/runs/{id}/events", run.id()))

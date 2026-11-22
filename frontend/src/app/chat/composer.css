@@ -18,6 +18,22 @@
   display: none;
 }
 
+/* Back to the end of the conversation, when it is out of view: it floats over the thread. */
+.jump {
+  position: absolute;
+  bottom: calc(100% + var(--space-3));
+  left: calc(50% - var(--control) / 2);
+  border-color: var(--color-rule-strong);
+  border-radius: var(--radius-full);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-pop);
+  animation: pop var(--medium) var(--ease-swing) backwards;
+}
+.jump:hover {
+  border-color: var(--color-accent-text);
+  color: var(--color-accent-text);
+}
+
 /*
  * One field holds it all: the text, then the model and the arrow that sends. It is the
  * brightest sheet on the page, edged and lifted, so that it cannot be missed.

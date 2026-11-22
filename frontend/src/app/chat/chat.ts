@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  afterNextRender,
   afterRenderEffect,
   computed,
   effect,
@@ -16,6 +17,7 @@ import { Router, RouterLink } from '@angular/router';
 import { GeneratedUi } from '../openui/generated-ui';
 import { SessionList } from '../sessions/session-list';
 import { ThemeToggle } from '../theme/theme-toggle';
+import { ActivityLinePipe } from './activity';
 import { ChatStore } from './chat.store';
 import { ReplyPartsPipe } from './reply-parts';
 import { RunSettingsBar } from './run-settings';
@@ -30,7 +32,15 @@ const NARROW = '(max-width: 48rem)';
     '[class.railed]': 'railed()',
     '(document:keydown.escape)': 'menuOpen.set(false)',
   },
-  imports: [GeneratedUi, ReplyPartsPipe, RouterLink, RunSettingsBar, SessionList, ThemeToggle],
+  imports: [
+    ActivityLinePipe,
+    GeneratedUi,
+    ReplyPartsPipe,
+    RouterLink,
+    RunSettingsBar,
+    SessionList,
+    ThemeToggle,
+  ],
   selector: 'app-chat',
   styleUrls: ['./chat.css', './thread.css', './blank.css', './composer.css'],
   templateUrl: './chat.html',
@@ -40,7 +50,22 @@ export class Chat {
   private readonly router = inject(Router);
   /** What scrolls: the title and the thread. */
   private readonly scroller = viewChild.required<ElementRef<HTMLElement>>('scroller');
+  private readonly thread = viewChild.required<ElementRef<HTMLElement>>('thread');
   private readonly entry = viewChild.required<ElementRef<HTMLTextAreaElement>>('entry');
+  private readonly destroyRef = inject(DestroyRef);
+
+  /**
+   * The index of the message last sent from this page. Its reply is read from its first
+   * line: the message is brought to the top of the view, and the view stays there.
+   */
+  protected readonly asked = signal<number | null>(null);
+  /** The end of the thread is out of view: the arrow that goes there is shown. */
+  protected readonly below = signal(false);
+  /** The view stays at the end of the thread as it grows, until the reader scrolls back up. */
+  private following = false;
+  /** What the next render owes the view: the question just asked, or the end of the thread. */
+  private owed: 'question' | 'end' | null = null;
+  private lastTop = 0;
 
   /** The session id of the URL (/c/:id); absent for a new conversation. */
   readonly id = input<string>();
@@ -73,17 +98,36 @@ export class Chat {
       const id = this.id() ?? null;
       untracked(async () => {
         this.menuOpen.set(false);
+        if (id !== this.store.activeId()) {
+          // Another conversation: it opens on its last lines.
+          this.asked.set(null);
+          this.following = true;
+          this.owed = 'end';
+        }
         if (!(await this.store.open(id))) {
           void this.router.navigate(['/'], { replaceUrl: true });
         }
       });
     });
 
-    // Keep the newest text in view while the answer grows.
+    // Where the view stands when the thread changes: on the question just asked, or at
+    // the end of a conversation just opened. It does not run after a reply being written.
     afterRenderEffect(() => {
       this.store.messages();
-      const el = this.scroller().nativeElement;
-      el.scrollTop = el.scrollHeight;
+      const loading = this.store.loading();
+      untracked(() => this.settle(loading));
+    });
+
+    // The thread grows and the view changes size without a render of this page: a reply's
+    // interface is drawn later, the field grows with what is typed, the window is resized.
+    afterNextRender(() => {
+      if (typeof ResizeObserver !== 'function') {
+        return;
+      }
+      const observer = new ResizeObserver(() => this.resized());
+      observer.observe(this.scroller().nativeElement);
+      observer.observe(this.thread().nativeElement);
+      this.destroyRef.onDestroy(() => observer.disconnect());
     });
 
     // A new conversation starts in the field; not on a phone, where it would raise the keyboard.
@@ -100,13 +144,92 @@ export class Chat {
       return;
     }
     this.draft.set('');
+    // The field itself too: typed and sent in one go, it may not have been drawn in between.
+    this.entry().nativeElement.value = '';
     this.sendText(text);
   }
 
   /** Sends a message: the one typed, or the one a click in a reply's interface asks for. */
   protected sendText(text: string): void {
+    const count = this.store.messages().length;
     // A first message creates the session: give it its URL as soon as it has one.
     void this.store.send(text, (session) => this.router.navigate(['/c', session.id]));
+    if (this.store.messages().length === count + 2) {
+      // The message was taken: it goes to the top of the view, and its reply is read from there.
+      this.asked.set(count);
+      this.following = false;
+      this.owed = 'question';
+    }
+  }
+
+  /** The arrow: goes to the end of the thread, and stays there while a reply is written. */
+  protected toEnd(): void {
+    const el = this.scroller().nativeElement;
+    this.following = true;
+    el.scrollTo({ top: el.scrollHeight, behavior: glide() });
+  }
+
+  protected onScroll(): void {
+    const el = this.scroller().nativeElement;
+    if (el.scrollTop < this.lastTop - 1) {
+      this.following = false; // scrolled back up: the reader has the view
+    }
+    this.lastTop = el.scrollTop;
+    this.lookBelow();
+  }
+
+  private settle(loading: boolean): void {
+    const el = this.scroller().nativeElement;
+    if (this.owed === 'question') {
+      this.owed = null;
+      const top = this.makeRoom();
+      if (top !== null) {
+        el.scrollTo({ top, behavior: glide() });
+      }
+    } else if (this.owed === 'end' && !loading) {
+      this.owed = null;
+      el.scrollTop = el.scrollHeight;
+    } else if (this.following) {
+      el.scrollTop = el.scrollHeight;
+    }
+    this.lookBelow();
+  }
+
+  private resized(): void {
+    const el = this.scroller().nativeElement;
+    this.makeRoom();
+    if (this.following && this.owed === null) {
+      el.scrollTop = el.scrollHeight;
+    }
+    this.lookBelow();
+  }
+
+  /**
+   * Gives the reply to the question asked here the height of what is left of the view, so
+   * that the question can stand at the top of it however short the reply still is.
+   * @returns where the view has to be for that, or null when no question was asked here
+   */
+  private makeRoom(): number | null {
+    const el = this.scroller().nativeElement;
+    const thread = this.thread().nativeElement;
+    const question = thread.querySelector<HTMLElement>(':scope > .asked');
+    const reply = question?.nextElementSibling;
+    if (!question || !(reply instanceof HTMLElement)) {
+      return null;
+    }
+    const style = getComputedStyle(thread);
+    const top = question.offsetTop - parseFloat(style.paddingTop);
+    const room = el.clientHeight - (reply.offsetTop - top) - parseFloat(style.paddingBottom);
+    const value = `${Math.max(0, Math.floor(room))}px`;
+    if (thread.style.getPropertyValue('--room') !== value) {
+      thread.style.setProperty('--room', value);
+    }
+    return top;
+  }
+
+  private lookBelow(): void {
+    const el = this.scroller().nativeElement;
+    this.below.set(el.scrollHeight - el.scrollTop - el.clientHeight > FAR_FROM_END);
   }
 
   protected onKeydown(event: KeyboardEvent): void {
@@ -145,8 +268,18 @@ export class Chat {
     };
     this.narrow.set(query.matches);
     query.addEventListener('change', update);
-    inject(DestroyRef).onDestroy(() => query.removeEventListener('change', update));
+    this.destroyRef.onDestroy(() => query.removeEventListener('change', update));
   }
+}
+
+/** How far from its end, in pixels, the thread is said to be out of view. */
+const FAR_FROM_END = 48;
+
+/** How the view moves when it is sent somewhere: at once for who asked for less motion. */
+function glide(): ScrollBehavior {
+  const still =
+    typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return still ? 'auto' : 'smooth';
 }
 
 const SIDEBAR_KEY = 'agent.sidebar';

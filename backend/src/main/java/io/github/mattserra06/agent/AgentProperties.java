@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -40,8 +41,12 @@ public record AgentProperties(@NotBlank String systemPrompt, @NotBlank String us
      * as the provider names them
      * @param defaultEffort the one used when a message names none; one of
      * {@code efforts}
+     * @param summary how the model sums up its reasoning as it goes, as the provider
+     * names it; the summary is what the UI shows while the model thinks. Empty to ask
+     * for none
      */
-    public record Reasoning(@NotEmpty List<@NotBlank String> efforts, @NotBlank String defaultEffort) {
+    public record Reasoning(@NotEmpty List<@NotBlank String> efforts, @NotBlank String defaultEffort,
+                            @Nullable String summary) {
 
         public Reasoning {
             if (efforts != null && defaultEffort != null && !efforts.contains(defaultEffort)) {

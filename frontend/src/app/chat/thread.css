@@ -11,8 +11,17 @@
 }
 
 .message {
+  position: relative; /* what it hides for screen readers stays inside it, and scrolls with it */
   flex: none;
   animation: rise var(--slow) var(--ease-out) backwards;
+}
+/*
+ * The reply to the question just asked is as tall as what is left of the view (--room is
+ * set by the page): the question can then stand at the top, and the reply be read from
+ * its first line while it is written.
+ */
+.message.asked + .message {
+  min-height: var(--room, 0);
 }
 @keyframes rise {
   from {
@@ -85,7 +94,41 @@
   }
 }
 
-/* Waiting for the first word: four bars that swing like a level meter. */
+/*
+ * What the agent is doing, on one line, while the reply is not there: the level meter,
+ * then its own words — what it thinks about, the tool it runs. Once the reply is being
+ * written, the tools it ran stay above it as a label.
+ */
+.activity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-bottom: var(--space-3);
+}
+.activity .pending {
+  flex: none;
+}
+.activity.kicker {
+  display: block;
+}
+.doing,
+.activity.kicker {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.doing {
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-entry);
+  font-style: italic;
+  line-height: var(--leading-text);
+  color: var(--color-ink-soft);
+  animation: rise var(--medium) var(--ease-out) backwards;
+}
+
+/* The level meter: four bars that swing. */
 .message .pending {
   display: flex;
   align-items: flex-end;

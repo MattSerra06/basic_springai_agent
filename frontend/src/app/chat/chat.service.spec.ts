@@ -47,6 +47,8 @@ function recorder(): RunHandlers & { calls: unknown[][] } {
   return {
     calls,
     text: (text) => calls.push(['text', text]),
+    thinking: (text) => calls.push(['thinking', text]),
+    tool: (name, activity) => calls.push(['tool', name, activity]),
     done: (interrupted) => calls.push(['done', interrupted]),
     failed: (message) => calls.push(['failed', message]),
     lost: () => calls.push(['lost']),
@@ -136,6 +138,25 @@ describe('ChatService', () => {
       ['done', true],
     ]);
     expect(source.readyState).toBe(FakeEventSource.CLOSED);
+  });
+
+  it('reports what the model thinks and the tools it starts', () => {
+    const handlers = recorder();
+    service.watch('r1', handlers);
+    const source = FakeEventSource.last;
+
+    source.receive({ text: '**Plan**' }, 'thinking');
+    source.receive({ name: 'linkup_search', activity: 'Je cherche la météo' }, 'tool');
+    source.receive({ name: 'linkup_fetch' }, 'tool');
+    source.receive({ text: 'Il pleut.' });
+
+    expect(handlers.calls).toEqual([
+      ['thinking', '**Plan**'],
+      ['tool', 'linkup_search', 'Je cherche la météo'],
+      ['tool', 'linkup_fetch', ''],
+      ['text', 'Il pleut.'],
+    ]);
+    expect(source.readyState).toBe(FakeEventSource.OPEN);
   });
 
   it('reports a failed run and closes the stream', () => {

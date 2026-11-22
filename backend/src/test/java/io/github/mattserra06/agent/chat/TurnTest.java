@@ -6,6 +6,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.part.ReasoningPart;
+import org.springframework.ai.chat.messages.part.StreamingParts;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.session.advisor.SessionMemoryAdvisor;
@@ -61,6 +63,29 @@ class TurnTest {
         turn.accept(chunk("request-2", ""));
 
         assertThat(turn.roundText()).isEmpty();
+    }
+
+    @Test
+    void showsTheReasoningAsItComesOneStepApartFromTheNext() {
+        assertThat(turn.thinking(reasoning(0, "**Plan**", null))).isEqualTo("**Plan**");
+        assertThat(turn.thinking(reasoning(0, " Je lis.", null))).isEqualTo(" Je lis.");
+        // Nothing to show: what the provider wants replayed, or a chunk of the reply
+        assertThat(turn.thinking(reasoning(0, null, null))).isEmpty();
+        assertThat(turn.thinking(chunk("request-1", "Bonjour"))).isEmpty();
+
+        assertThat(turn.thinking(reasoning(2, "**Suite**", null))).isEqualTo("\n\n**Suite**");
+        // Without a summary, the reasoning itself
+        assertThat(turn.thinking(reasoning(2, null, " brut"))).isEqualTo(" brut");
+    }
+
+    private static ChatClientResponse reasoning(int index, String summary, String text) {
+        AssistantMessage message = AssistantMessage.builder()
+                .part(StreamingParts.partial(new ReasoningPart(text, summary, null, Map.of()), index))
+                .build();
+        return ChatClientResponse.builder()
+                .chatResponse(new ChatResponse(List.of(new Generation(message))))
+                .context(Map.of(SessionMemoryAdvisor.REQUEST_EVENT_ID_CONTEXT_KEY, "request-1"))
+                .build();
     }
 
     @Test

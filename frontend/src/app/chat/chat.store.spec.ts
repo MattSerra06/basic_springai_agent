@@ -168,6 +168,31 @@ describe('ChatStore', () => {
     expect(store.streaming()).toBe(false);
   });
 
+  it('keeps what the agent did beside the reply it writes', async () => {
+    await store.send('Quel temps à Lyon ?');
+
+    api.watching.handlers.thinking('**Je regarde** la météo');
+    expect(store.messages().at(-1)!.activity).toEqual({
+      thinking: '**Je regarde** la météo',
+      tools: [],
+      now: 'thinking',
+    });
+
+    api.watching.handlers.tool('linkup_search', 'Je cherche la météo de Lyon');
+    api.watching.handlers.text('Il pleut.');
+    api.watching.handlers.done(false);
+
+    expect(store.messages().at(-1)).toEqual({
+      role: 'assistant',
+      content: 'Il pleut.',
+      activity: {
+        thinking: '**Je regarde** la météo',
+        tools: [{ name: 'linkup_search', activity: 'Je cherche la météo de Lyon' }],
+        now: 'writing',
+      },
+    });
+  });
+
   it('answers with the default model and effort until others are chosen', async () => {
     await store.loadOptions();
 

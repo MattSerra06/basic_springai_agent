@@ -2,6 +2,7 @@ package io.github.mattserra06.agent;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import io.github.mattserra06.agent.chat.ActiveTurns;
 import io.github.mattserra06.agent.chat.ChatEvent;
@@ -18,6 +19,8 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
+import org.springframework.ai.chat.messages.part.ReasoningPart;
+import org.springframework.ai.chat.messages.part.StreamingParts;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.responses.OpenAiResponsesChatOptions;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -311,12 +314,38 @@ class AgentIntegrationTest {
 
         // ...and gets it back from the tool, which searches the whole log
         assertThat(events).containsExactly(
-                new ChatEvent.Text("Je cherche."), new ChatEvent.Text("\n\nTrouvé."), new ChatEvent.Done(false));
+                new ChatEvent.Text("Je cherche."), new ChatEvent.ToolCall("conversation_search", "Je relis nos échanges"),
+                new ChatEvent.Text("\n\nTrouvé."), new ChatEvent.Done(false));
         ToolResponseMessage toolResult = (ToolResponseMessage) model.prompts.getLast().getInstructions().getLast();
         assertThat(toolResult.getResponses().getFirst().responseData()).contains("PAPAYE-42");
         assertThat(conversations.open(sessionId).messages()).endsWith(
                 new MessageView("user", "Quel est mon code ?", false),
                 new MessageView("assistant", "Je cherche.\n\nTrouvé.", false));
+    }
+
+    @Test
+    void theReasoningOfTheModelIsReportedBesideTheReply() {
+        // As the Responses API streams it: the summary of each reasoning step in deltas,
+        // then the chunk that only carries what must be replayed, then the reply
+        model.repliesWith(prompt -> Flux.just(
+                reasoning(0, "**Je compte**"), reasoning(0, " les lettres."), reasoning(0, null),
+                reasoning(2, "**Je vérifie**"), new AssistantMessage("Trois.")));
+
+        Exchange exchange = converse(null, "Combien de r dans arbre ?");
+
+        assertThat(exchange.events()).containsExactly(
+                new ChatEvent.Thinking("**Je compte**"), new ChatEvent.Thinking(" les lettres."),
+                new ChatEvent.Thinking("\n\n**Je vérifie**"), new ChatEvent.Text("Trois."), new ChatEvent.Done(false));
+        // The reasoning is not part of the reply
+        assertThat(conversations.open(exchange.session().id()).messages()).containsExactly(
+                new MessageView("user", "Combien de r dans arbre ?", false),
+                new MessageView("assistant", "Trois.", false));
+    }
+
+    private static AssistantMessage reasoning(int index, String summaryDelta) {
+        return AssistantMessage.builder()
+                .part(StreamingParts.partial(new ReasoningPart(null, summaryDelta, null, Map.of()), index))
+                .build();
     }
 
     @Test
@@ -331,7 +360,8 @@ class AgentIntegrationTest {
                 && model.prompts.getLast().getInstructions().getLast() instanceof ToolResponseMessage);
         activeTurns.interrupt(sessionId);
 
-        assertThat(eventsOf(runId)).containsExactly(new ChatEvent.Text("Je cherche."), new ChatEvent.Done(true));
+        assertThat(eventsOf(runId)).containsExactly(new ChatEvent.Text("Je cherche."),
+                new ChatEvent.ToolCall("conversation_search", "Je relis nos échanges"), new ChatEvent.Done(true));
         assertThat(conversations.open(sessionId).messages()).endsWith(
                 new MessageView("user", "Quel est mon code ?", false),
                 new MessageView("assistant", "Je cherche.", false));
@@ -347,6 +377,7 @@ class AgentIntegrationTest {
 
         StepVerifier.create(runs.events(runId, 0).map(RunEvent::event))
                 .expectNext(new ChatEvent.Text("Je cherche."))
+                .expectNext(new ChatEvent.ToolCall("conversation_search", "Je relis nos échanges"))
                 .expectNext(new ChatEvent.Text("\n\nTrouvé : "))
                 .then(() -> activeTurns.interrupt(sessionId))
                 .expectNext(new ChatEvent.Done(true))
@@ -390,10 +421,11 @@ class AgentIntegrationTest {
             if (prompt.getInstructions().getLast() instanceof ToolResponseMessage) {
                 return secondRound;
             }
-            // As a provider streams it: the text first, the tool call in a chunk of its own
+            // As a provider streams it: the text first, the tool call in a chunk of its own.
+            // The call says what it is for, as every tool asks the model to
             return Flux.just(new AssistantMessage(firstRound), AssistantMessage.builder()
                     .toolCalls(List.of(new AssistantMessage.ToolCall("call_1", "function", "conversation_search",
-                            "{\"query\":\"secret\"}")))
+                            "{\"query\":\"secret\",\"activity\":\"Je relis nos échanges\"}")))
                     .build());
         };
     }

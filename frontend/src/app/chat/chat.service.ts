@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Activity } from './activity';
 
 export interface Session {
   id: string;
@@ -13,6 +14,8 @@ export interface Message {
   interrupted?: boolean;
   /** Shown in place of a reply that failed; never stored. */
   error?: boolean;
+  /** What the agent did to write the reply, when this page followed its run; never stored. */
+  activity?: Activity;
 }
 
 /** A conversation as it is opened. */
@@ -53,6 +56,10 @@ export interface RunSettings {
 /** What following a run reports. Exactly one of done, failed and lost ends it. */
 export interface RunHandlers {
   text(text: string): void;
+  /** A piece of the model's summary of its reasoning. */
+  thinking(text: string): void;
+  /** The model starts a tool; activity is what it says the call is for, possibly empty. */
+  tool(name: string, activity: string): void;
   done(interrupted: boolean): void;
   failed(message: string): void;
   /** The event stream is gone for good, e.g. the backend no longer knows the run. */
@@ -123,6 +130,18 @@ export class ChatService {
         handlers.text(text);
       }
     };
+    source.addEventListener('thinking', (event) => {
+      const text = JSON.parse((event as MessageEvent).data).text;
+      if (text) {
+        handlers.thinking(text);
+      }
+    });
+    source.addEventListener('tool', (event) => {
+      const call = JSON.parse((event as MessageEvent).data);
+      if (call.name) {
+        handlers.tool(call.name, call.activity ?? '');
+      }
+    });
     source.addEventListener('done', (event) => {
       const interrupted = JSON.parse((event as MessageEvent).data).interrupted === true;
       end(() => handlers.done(interrupted));

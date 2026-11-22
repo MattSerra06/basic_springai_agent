@@ -41,12 +41,18 @@ public class RunOptions {
         if (reasoningEffort != null && !reasoning.efforts().contains(reasoningEffort)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown reasoning effort " + reasoningEffort);
         }
+        String summary = reasoning.summary();
         return new Selection((model != null) ? model : models.getFirst().id(),
-                (reasoningEffort != null) ? reasoningEffort : reasoning.defaultEffort());
+                (reasoningEffort != null) ? reasoningEffort : reasoning.defaultEffort(),
+                (summary != null && !summary.isBlank()) ? summary : null);
     }
 
-    /** The settings one run is answered with. */
-    public record Selection(String model, String reasoningEffort) {
+    /**
+     * The settings one run is answered with.
+     * @param reasoningSummary how the model sums up its reasoning as it goes, or
+     * {@code null} when it is not asked to
+     */
+    public record Selection(String model, String reasoningEffort, @Nullable String reasoningSummary) {
     }
 
     /**

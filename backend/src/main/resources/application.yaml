@@ -50,6 +50,10 @@ agent:
     # Responses API names them (reasoning.effort).
     efforts: [low, medium, high, xhigh]
     default-effort: medium
+    # The model's own summary of its reasoning, shown in the UI while it thinks:
+    # auto, concise or detailed (reasoning.summary). Leave empty to ask for none,
+    # e.g. if OpenAI refuses summaries to your organization.
+    summary: auto
   # Keep-alive line sent on the event stream while the model is silent; keep it
   # under the idle timeout of any proxy in front of the backend.
   stream-heartbeat: 15s

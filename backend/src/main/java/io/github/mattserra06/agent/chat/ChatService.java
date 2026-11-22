@@ -1,5 +1,8 @@
 package io.github.mattserra06.agent.chat;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import io.github.mattserra06.agent.session.Conversations;
 import io.github.mattserra06.agent.session.SessionCompactor;
 import io.github.mattserra06.agent.session.SessionView;
@@ -9,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springaicommunity.agent.advisors.InterruptAdvisor;
 import org.springaicommunity.agent.advisors.TurnInterruptedException;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.openai.responses.OpenAiResponsesChatOptions;
 import org.springframework.ai.session.advisor.SessionAdvisors;
 import org.springframework.stereotype.Service;
@@ -29,9 +33,11 @@ public class ChatService {
     private final RunStore runs;
     private final RunOptions runOptions;
     private final SessionCompactor compactor;
+    private final AgentTools tools;
 
     public ChatService(ChatClient chatClient, Conversations conversations, ActiveTurns activeTurns, RunStore runs,
-                       RunOptions runOptions, SessionCompactor compactor) {
+                       RunOptions runOptions, SessionCompactor compactor, AgentTools tools) {
+        this.tools = tools;
         this.chatClient = chatClient;
         this.conversations = conversations;
         this.activeTurns = activeTurns;
@@ -102,15 +108,17 @@ public class ChatService {
             return chatClient.prompt()
                     .options(OpenAiResponsesChatOptions.builder()
                             .model(selection.model())
-                            .reasoningEffort(selection.reasoningEffort()))
+                            .reasoningEffort(selection.reasoningEffort())
+                            .reasoningSummary(selection.reasoningSummary()))
                     .user(run.message())
+                    // Each tool call says what it is for before it runs: see AgentTools
+                    .tools((Object[]) tools.reportingTo(
+                            (tool, activity) -> report(run, new ChatEvent.ToolCall(tool, activity))))
                     .advisors(SessionAdvisors.session(sessionId))
                     .advisors(InterruptAdvisor.builder().interruptSignal(turn::isInterrupted).build())
                     .stream()
                     .chatClientResponse()
-                    .map(turn::accept)
-                    .filter(text -> !text.isEmpty())
-                    .<ChatEvent>map(ChatEvent.Text::new)
+                    .concatMapIterable(chunk -> events(turn, chunk))
                     .doOnComplete(turn::modelFinished)
                     .takeUntilOther(turn.interruption())
                     .onErrorResume(TurnInterruptedException.class, interruptedBetweenRounds -> Flux.empty());
@@ -139,6 +147,34 @@ public class ChatService {
                     runs.append(run.id(), event);
                 })
                 .doFinally(signal -> wrapUp(sessionId, turn));
+    }
+
+    /** What a streamed chunk has to show: the model's reasoning, then the reply's text. */
+    private static List<ChatEvent> events(Turn turn, ChatClientResponse chunk) {
+        String thinking = turn.thinking(chunk);
+        String text = turn.accept(chunk);
+        List<ChatEvent> events = new ArrayList<>(2);
+        if (!thinking.isEmpty()) {
+            events.add(new ChatEvent.Thinking(thinking));
+        }
+        if (!text.isEmpty()) {
+            events.add(new ChatEvent.Text(text));
+        }
+        return events;
+    }
+
+    /**
+     * Adds to the run's log something that happens beside the reply. A tool reports from
+     * its own thread, and may still be running when a stop has ended the run: what it
+     * says then is dropped, and never makes the tool fail.
+     */
+    private void report(Run run, ChatEvent event) {
+        try {
+            runs.append(run.id(), event);
+        }
+        catch (RuntimeException ex) {
+            log.debug("Run {} no longer takes events: {}", run.id(), ex.getMessage());
+        }
     }
 
     /** Ends the turn on a thread of its own: compaction is a model call. */
