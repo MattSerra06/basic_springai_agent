@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { Block, hostOf, objects, safeUrl, strings } from '../block';
+import { highlighted, loadHighlighter } from '../highlight';
 import { InlineText, paragraphs } from '../inline';
 
 const OnPush = ChangeDetectionStrategy.OnPush;
@@ -73,11 +74,25 @@ export class Quote extends Block<{ text: string; author: string }> {}
         {{ copied() ? 'Copié' : 'Copier' }}
       </button>
     </figcaption>
-    <pre tabindex="0"><code>{{ p.code }}</code></pre>
+    @if (html(); as html) {
+      <pre tabindex="0"><code [innerHTML]="html"></code></pre>
+    } @else {
+      <pre tabindex="0"><code>{{ p.code }}</code></pre>
+    }
   </figure>`,
 })
 export class CodeBlock extends Block<{ language: string; code: string }> {
   protected readonly copied = signal(false);
+  /** The code in colours, once the highlighter is there; null for code shown plain. */
+  protected readonly html = computed(() => {
+    const props = this.props();
+    return highlighted(String(props?.code ?? ''), props?.language);
+  });
+
+  constructor() {
+    super();
+    void loadHighlighter();
+  }
 
   protected async copy(): Promise<void> {
     try {

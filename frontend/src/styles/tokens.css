@@ -37,6 +37,7 @@
   --color-accent-soft: light-dark(#f5d3b6, #5a2c12); /* the action at rest */
   --color-on-accent: light-dark(#fff8ec, #1c0e04);
   --color-accent-text: light-dark(#8f2f06, #ff9a56); /* orange, as text */
+  --color-mark: light-dark(#f8c48a, #7a3a0e); /* orange, as a marker: ink is 7:1 on it */
 
   --color-sun: light-dark(#e8962e, #a8480f); /* the sun of the blank page: noon · embers */
   --color-sun-deep: light-dark(#d46018, #5a2408); /* the same, towards the horizon */
@@ -60,6 +61,16 @@
   --chart-4: light-dark(#8a3a78, #b866a6);
   --chart-5: light-dark(#4f7d1e, #78a236);
   --chart-rest: light-dark(#8c7a68, #7d6b5a);
+  /*
+   * Code: the colours of its tokens, on the sheet of a block of code. Each one is at
+   * least 4.5:1 against --color-surface, by day and by night; change one and check again.
+   */
+  --code-keyword: light-dark(#a2360a, #ff9a56); /* the words of the language: burnt orange */
+  --code-string: light-dark(#3d6b1c, #9cc56a);
+  --code-number: light-dark(#8a3a78, #e0a3d0); /* numbers and literals */
+  --code-title: light-dark(#1f6aa8, #7cc0ea); /* what is named: functions, types, tags */
+  --code-attr: light-dark(#7d5a06, #e0b45a); /* attributes, properties, variables */
+  --code-comment: light-dark(#7a5c40, #b09a80);
   /* Map tiles are tinted like the page: sepia by day, turned to night after dark. */
   --map-filter: sepia(0.4) saturate(0.85) contrast(0.95);
 

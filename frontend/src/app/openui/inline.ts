@@ -11,17 +11,18 @@ import { hostOf, safeUrl } from './block';
 
 /** A piece of a line of text. */
 export type Inline =
-  | { kind: 'text' | 'strong' | 'em' | 'code'; text: string }
+  | { kind: 'text' | 'strong' | 'em' | 'code' | 'mark'; text: string }
   | { kind: 'link'; text: string; url: string }
   | { kind: 'cite'; index: number }
   | { kind: 'break' };
 
 /*
- * The inline markdown the model is told it may use: `code`, **bold**, *italic*,
- * [label](url), a bare URL, a [1]-style citation. Anything else is text.
+ * The inline markdown the model is told it may use: `code`, ==highlighted==, **bold**,
+ * *italic*, [label](url), a bare URL, a [1]-style citation. Anything else is text. What
+ * is highlighted starts and ends on a word, so that "a == b or c == d" stays text.
  */
 const INLINE =
-  /`([^`\n]+)`|\*\*([^*\n]+?)\*\*|\*([^*\s][^*\n]*?)\*|\[([^\]\n]+)\]\(([^)\s]+)\)|\[(\d{1,2})\]|(https?:\/\/[^\s<>"'`]+)|\n/g;
+  /`([^`\n]+)`|==(?=\S)([^=\n]+?)(?<=\S)==|\*\*([^*\n]+?)\*\*|\*([^*\s][^*\n]*?)\*|\[([^\]\n]+)\]\(([^)\s]+)\)|\[(\d{1,2})\]|(https?:\/\/[^\s<>"'`]+)|\n/g;
 
 /** Splits a text into what is drawn differently. Never throws, whatever the text. */
 export function parseInline(text: string): Inline[] {
@@ -40,9 +41,11 @@ export function parseInline(text: string): Inline[] {
       push({ kind: 'text', text: text.slice(end, match.index) });
     }
     end = match.index + match[0].length;
-    const [whole, code, strong, em, label, target, cite, bare] = match;
+    const [whole, code, mark, strong, em, label, target, cite, bare] = match;
     if (code !== undefined) {
       push({ kind: 'code', text: code });
+    } else if (mark !== undefined) {
+      push({ kind: 'mark', text: mark });
     } else if (strong !== undefined) {
       push({ kind: 'strong', text: strong });
     } else if (em !== undefined) {
@@ -104,6 +107,9 @@ export class Sources {
       }
       @case ('code') {
         <code class="gui-code">{{ part.text }}</code>
+      }
+      @case ('mark') {
+        <mark class="gui-mark">{{ part.text }}</mark>
       }
       @case ('link') {
         <a class="gui-link" [href]="part.url" target="_blank" rel="noopener noreferrer">{{

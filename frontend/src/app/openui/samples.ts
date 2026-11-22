@@ -123,7 +123,7 @@ right = Panel([Timeline([{when: "14:05", title: "Décollage de Paris"}, {when: "
     about: 'La prose, les titres, les encadrés, les citations et le code.',
     program: `root = Response([lead, body, h, note, warn, quote, sep, code])
 lead = TextContent("Un agent qui répond avec une interface plutôt qu'avec un mur de texte.", "lead")
-body = TextContent("Le texte courant accepte le **gras**, l'*italique*, le \`code\` et les [liens](https://angular.dev).\\n\\nUn second paragraphe suit une ligne vide.")
+body = TextContent("Le texte courant accepte le **gras**, l'*italique*, le ==surlignage==, le \`code\` et les [liens](https://angular.dev).\\n\\nUn second paragraphe suit une ligne vide.")
 h = Heading("Ce qu'il faut retenir")
 note = Callout("info", "Rendu en continu", "L'interface se construit pendant que la réponse arrive.")
 warn = Callout("warning", "Sans filet", "Une erreur du modèle retire le bloc fautif ; le reste s'affiche.")

@@ -123,6 +123,16 @@
   border-radius: var(--radius-sm);
   background: var(--color-selected);
 }
+/* Highlighted words: a stroke of orange marker, under full ink even where the text is soft. */
+.gui-mark {
+  padding: 0.05em 0.2em;
+  border-radius: var(--radius-sm);
+  background: var(--color-mark);
+  color: var(--color-ink);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
 /* A citation: the number of its source, in a small orange disc. */
 .gui-cite {
   display: inline-grid;
@@ -230,6 +240,55 @@
   overflow-x: auto;
   font-size: var(--text-small);
   line-height: var(--leading-text);
+}
+/* The tokens of the code, as highlight.js names them, in the colours of tokens.css. */
+.gui-codeblock .hljs-keyword,
+.gui-codeblock .hljs-selector-tag,
+.gui-codeblock .hljs-doctag {
+  color: var(--code-keyword);
+}
+.gui-codeblock .hljs-string,
+.gui-codeblock .hljs-regexp,
+.gui-codeblock .hljs-addition {
+  color: var(--code-string);
+}
+.gui-codeblock .hljs-number,
+.gui-codeblock .hljs-literal,
+.gui-codeblock .hljs-symbol,
+.gui-codeblock .hljs-bullet {
+  color: var(--code-number);
+}
+.gui-codeblock .hljs-title,
+.gui-codeblock .hljs-section,
+.gui-codeblock .hljs-name,
+.gui-codeblock .hljs-type,
+.gui-codeblock .hljs-built_in,
+.gui-codeblock .hljs-selector-class,
+.gui-codeblock .hljs-selector-id {
+  color: var(--code-title);
+}
+.gui-codeblock .hljs-attr,
+.gui-codeblock .hljs-attribute,
+.gui-codeblock .hljs-variable,
+.gui-codeblock .hljs-template-variable,
+.gui-codeblock .hljs-property,
+.gui-codeblock .hljs-meta,
+.gui-codeblock .hljs-link {
+  color: var(--code-attr);
+}
+.gui-codeblock .hljs-comment,
+.gui-codeblock .hljs-quote {
+  color: var(--code-comment);
+  font-style: italic;
+}
+.gui-codeblock .hljs-deletion {
+  color: var(--color-danger);
+}
+.gui-codeblock .hljs-emphasis {
+  font-style: italic;
+}
+.gui-codeblock .hljs-strong {
+  font-weight: 700;
 }
 .gui-chip {
   height: var(--control-sm);

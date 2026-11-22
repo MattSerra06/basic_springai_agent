@@ -101,7 +101,7 @@ export function buildCatalogue<T extends Defined>(define: (definition: Definitio
   });
   const TextContent = add(
     'TextContent',
-    'Running text: one or more paragraphs separated by \\n\\n. Inline markdown only (**bold**, *italic*, `code`, [label](https://url)) and [1]-style citations of the Response sources. tone "lead" is for one opening sentence, "muted" for a side remark.',
+    'Running text: one or more paragraphs separated by \\n\\n. Inline markdown only (**bold**, *italic*, ==highlighted==, `code`, [label](https://url)) and [1]-style citations of the Response sources. tone "lead" is for one opening sentence, "muted" for a side remark.',
     { text: z.string(), tone: z.enum(['body', 'lead', 'muted']).optional() },
   );
   const Callout = add(
@@ -508,6 +508,7 @@ export const componentGroups: ComponentGroup[] = [
     components: ['Heading', 'TextContent', 'Callout', 'Quote', 'CodeBlock', 'Separator'],
     notes: [
       '- TextContent carries the prose. Never put markdown headings, lists or tables in it: use Heading, List and Table.',
+      '- ==Two equal signs== around a few words highlight them in orange, like a marker pen, wherever inline markdown is read (TextContent, Callout, Quote, cards, lists, table cells). Use it for what the reader must not miss: the figure, the date, the verdict. A few words at a time, one or two highlights per answer, never a whole sentence.',
       '- Escape double quotes inside strings as \\" and line breaks as \\n.',
     ],
   },
@@ -616,8 +617,13 @@ export const promptOptions = {
   preamble:
     'Your replies are rendered as an interface. Write every reply in openui-lang, the language described below, and in nothing else: no prose before or after it, no markdown fences. While you call tools, write nothing; the program is your final answer.',
   additionalRules: [
-    'A short or conversational answer is just root = Response([t]) with one TextContent. Do not dress up a simple answer.',
-    'Reach for the other components when they carry the content better than prose: a Table to compare, a chart for figures, a Map for places, Steps for a procedure, Cards to choose between things, LinkCards for pages to open, a Form to ask for several values.',
+    'Only a greeting, a one-line fact, a yes or no, or a question back to the user is a plain answer: root = Response([t]) with one TextContent.',
+    'Every other answer is a page you design, not paragraphs under a title. Work like the art director of a magazine: decide what the reader must see first, then give each kind of content the component made for it. A Heading followed by a stack of TextContent blocks is a failed answer: do not wait to be asked to present it better.',
+    'Compose with several kinds of components, usually three or more: Metrics for the two to four figures that matter, a chart when there is a series of numbers, a Table to compare, a Map for places, a Timeline for dates, Steps for a procedure, Cards for things of the same kind, Tags for themes, a Callout for the takeaway or the caveat, a Quote for what someone said, LinkCards for pages to open, a Form to ask for several values, Tabs or an Accordion when there is a lot.',
+    'Lay the page out: a Heading and one "lead" sentence, then the main piece framed in a Panel, then the rest side by side in a Grid or as Cards. Keep the prose inside a component to one to three sentences: what is longer becomes structure.',
+    'A digest (the news, several topics, the results of a search) is a front page: the main story in a Panel with its Tags, the other stories as Cards with their topic as tag, the figures of the day as Metrics, what comes next as a Timeline.',
+    'Pick the components from the content, and vary the page from one reply to the next: never the same skeleton twice in a row.',
+    'Never invent content to fill a component: a chart needs real figures, a Map places you can locate, an Image a URL you know. When the data is missing, choose another component.',
     'Asked to make, build or show something to use (a calculator, a timer, a tracker, a planner, a finder), answer with the working interface itself, in a Panel, not with an explanation of how one would build it.',
     'Write the text inside the components in the language of the user. Component names and enum values stay as they are.',
     'When you used web results, list the pages you relied on in the sources of Response, and cite them in the text as [1], [2].',
@@ -639,7 +645,24 @@ note = Callout("info", "À retenir", "L'offre Pro devient rentable au-delà de 2
 next = FollowUps(["Compare les garanties", "Laquelle pour une équipe de cinq ?"])
 srcs = [{title: "Tarifs", url: "https://example.com/tarifs", publisher: "Example"}, {title: "Comparatif 2026", url: "https://example.org/comparatif"}]`,
 
-    `Example 3 — figures and places:
+    `Example 3 — a digest of the news, laid out as a front page:
+
+root = Response([h, lead, top, figs, others, ahead, next], srcs)
+h = Heading("Le journal du mardi")
+lead = TextContent("Trois sujets dominent la journée : le budget, la grève des trains et un record de chaleur.", "lead")
+top = Panel([topTags, topText, topQuote], "À la une — Le budget passe de justesse")
+topTags = Tags(["Politique", "Vote serré"])
+topText = TextContent("L'Assemblée a adopté le budget par ==289 voix contre 284==, après trois semaines de débats [1].")
+topQuote = Quote("Ce texte n'est pas parfait, mais il est voté.", "La ministre des Comptes publics")
+figs = Metrics([{label: "Voix pour", value: "289", detail: "5 de plus que le seuil", trend: "up"}, {label: "Trains supprimés", value: "1 sur 3", detail: "mardi", trend: "down"}, {label: "Record à Nîmes", value: "31,4 °C", detail: "+2,1 °C sur 1995", trend: "up"}])
+others = Cards([c1, c2])
+c1 = Card("Un train sur trois supprimé", "La grève touche surtout les lignes régionales ; le trafic reprend jeudi [2].", null, "Transports")
+c2 = Card("Record de chaleur pour un mois d'octobre", "Nîmes a dépassé de 2,1 °C son record de 1995 [3].", null, "Météo")
+ahead = Timeline([{when: "Mercredi", title: "Le budget arrive au Sénat"}, {when: "Jeudi", title: "Reprise du trafic ferroviaire", text: "D'abord sur les grandes lignes."}])
+next = FollowUps(["Détaille le vote du budget", "Quelles lignes sont touchées ?"])
+srcs = [{title: "Le budget adopté", url: "https://example.com/budget", publisher: "Example"}, {title: "Grève : les prévisions de trafic", url: "https://example.org/trafic"}, {title: "Record de chaleur à Nîmes", url: "https://example.net/meteo"}]`,
+
+    `Example 4 — figures and places:
 
 root = Response([h, chart, map])
 h = Heading("Fréquentation par ville")
@@ -651,7 +674,7 @@ m1 = Marker("Lyon", 45.764, 4.8357, "Site principal")
 m2 = Marker("Nantes", 47.2184, -1.5536)
 m3 = Marker("Lille", 50.6292, 3.0573)`,
 
-    `Example 4 — asking for several values:
+    `Example 5 — asking for several values:
 
 root = Response([ask, form])
 ask = TextContent("Il me faut quelques précisions pour chiffrer le voyage.")
@@ -661,7 +684,7 @@ f2 = FormControl("Budget", Slider("budget", 300, 3000, 100, 1200, "€"))
 f3 = FormControl("Style", RadioGroup("style", [RadioItem("calm", "Tranquille"), RadioItem("busy", "Dense")], "calm"))
 btns = Buttons([Button("Chiffrer le voyage", Action([@ToAssistant("Chiffre ce voyage")]), "primary")])`,
 
-    `Example 5 — a calculator that computes in the browser (state, a keypad, a reused expression):
+    `Example 6 — a calculator that computes in the browser (state, a keypad, a reused expression):
 
 root = Response([calc])
 $cur = 0
@@ -688,7 +711,7 @@ kdiv = Button("÷", Action([@Set($acc, res), @Set($op, "÷"), @Set($cur, 0)]), "
 keq = Button("=", Action([@Set($cur, res), @Set($op, ""), @Set($acc, 0)]), "primary")
 kc = Button("C", Action([@Reset($cur, $acc, $op)]), "danger")`,
 
-    `Example 6 — fields bound to variables, a result computed live, a block shown on a condition:
+    `Example 7 — fields bound to variables, a result computed live, a block shown on a condition:
 
 root = Response([app])
 $bill = 80

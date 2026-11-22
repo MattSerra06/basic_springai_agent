@@ -66,6 +66,23 @@ describe('inline text', () => {
     ]);
   });
 
+  it('highlights the words between two equal signs, and only words', () => {
+    expect(parseInline('Livré le ==12 mars== au plus tard.')).toEqual([
+      { kind: 'text', text: 'Livré le ' },
+      { kind: 'mark', text: '12 mars' },
+      { kind: 'text', text: ' au plus tard.' },
+    ]);
+    // A comparison written in prose is not a highlight
+    expect(parseInline('si a == b ou c == d')).toEqual([
+      { kind: 'text', text: 'si a == b ou c == d' },
+    ]);
+    expect(parseInline('`a == b` ==vrai==')).toEqual([
+      { kind: 'code', text: 'a == b' },
+      { kind: 'text', text: ' ' },
+      { kind: 'mark', text: 'vrai' },
+    ]);
+  });
+
   it('links to pages, by label, by citation or by bare address', () => {
     expect(
       parseInline('Voir [la doc](https://angular.dev/guide) [2] ou https://example.com/a.'),
