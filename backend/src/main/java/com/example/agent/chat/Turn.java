@@ -6,6 +6,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.session.advisor.SessionMemoryAdvisor;
 import reactor.core.publisher.Mono;
@@ -20,6 +21,10 @@ import reactor.core.publisher.Sinks;
  */
 final class Turn {
 
+    /** How long a turn waits for the previous one of its session to finish wrapping up. */
+    private static final Duration WRAP_UP_WAIT = Duration.ofMinutes(2);
+
+    private final @Nullable Turn previous;
     private final AtomicBoolean interrupted = new AtomicBoolean();
     private final Sinks.Empty<Void> stop = Sinks.empty();
     private final CountDownLatch finished = new CountDownLatch(1);
@@ -28,6 +33,14 @@ final class Turn {
     private final StringBuilder roundText = new StringBuilder();
     private Object round;
     private boolean anyText;
+
+    /**
+     * @param previous the turn of the same session this one follows, when it is still
+     * wrapping up
+     */
+    Turn(@Nullable Turn previous) {
+        this.previous = previous;
+    }
 
     boolean isInterrupted() {
         return interrupted.get();
@@ -49,25 +62,30 @@ final class Turn {
         replied = true;
     }
 
+    boolean hasReplied() {
+        return replied;
+    }
+
     void finished() {
         finished.countDown();
     }
 
     /**
-     * Waits for a turn that has replied to finish.
-     * @return false when the turn is still generating its reply, or does not finish in
-     * time
+     * Blocks until the previous turn of the session has finished wrapping up.
+     * @throws IllegalStateException when it does not finish in time
      */
-    boolean awaitWrapUp(Duration timeout) {
-        if (!replied) {
-            return false;
+    void awaitPrevious() {
+        if (previous == null) {
+            return;
         }
         try {
-            return finished.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
+            if (!previous.finished.await(WRAP_UP_WAIT.toMillis(), TimeUnit.MILLISECONDS)) {
+                throw new IllegalStateException("The previous turn of the session did not finish in time");
+            }
         }
         catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            return false;
+            throw new IllegalStateException("Interrupted while waiting for the previous turn", ex);
         }
     }
 

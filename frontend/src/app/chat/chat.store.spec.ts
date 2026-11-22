@@ -1,66 +1,63 @@
 import { TestBed } from '@angular/core/testing';
-import { ChatService, Message, Session, TurnEvent } from './chat.service';
+import { ChatService, Conversation, RunHandlers, RunStarted, Session } from './chat.service';
 import { ChatStore } from './chat.store';
 
 const SESSION: Session = { id: 's1', title: 'Salut', createdAt: '2026-01-01T00:00:00Z' };
 
-/** A backend whose stream the test feeds event by event. */
+/** A backend whose runs the test drives through the handlers the store registers. */
 class FakeChatService {
-  history: Record<string, Message[]> = {};
+  conversations: Record<string, Conversation> = {};
+  sent: { message: string; sessionId: string | null }[] = [];
   interrupted: string[] = [];
   removed: string[] = [];
-  sent: { message: string; sessionId: string | null }[] = [];
-
-  private push?: (event: TurnEvent | null) => void;
-  private queue: (TurnEvent | null)[] = [];
-
-  /** Feeds the open stream; null ends it. */
-  emit(event: TurnEvent | null): void {
-    // A waiting reader takes one event; the rest is queued until it reads again.
-    const push = this.push;
-    this.push = undefined;
-    if (push) {
-      push(event);
-    } else {
-      this.queue.push(event);
-    }
-  }
+  /** The run being followed, and whether the store stopped following it. */
+  watching?: { runId: string; handlers: RunHandlers; stopped: boolean };
+  failStart = false;
 
   async sessions(): Promise<Session[]> {
     return [SESSION];
   }
 
-  async messages(sessionId: string): Promise<Message[]> {
-    if (!(sessionId in this.history)) {
+  async conversation(sessionId: string): Promise<Conversation> {
+    if (!(sessionId in this.conversations)) {
       throw new Error('404');
     }
-    return this.history[sessionId];
+    return this.conversations[sessionId];
   }
 
-  async remove(sessionId: string): Promise<void> {
-    this.removed.push(sessionId);
+  async start(message: string, sessionId: string | null): Promise<RunStarted> {
+    this.sent.push({ message, sessionId });
+    if (this.failStart) {
+      throw new Error('409');
+    }
+    return { runId: `r${this.sent.length}`, session: { ...SESSION, id: sessionId ?? 's1' } };
+  }
+
+  watch(runId: string, handlers: RunHandlers): () => void {
+    const watching = { runId, handlers, stopped: false };
+    this.watching = watching;
+    return () => (watching.stopped = true);
   }
 
   async interrupt(sessionId: string): Promise<void> {
     this.interrupted.push(sessionId);
   }
 
-  async *stream(message: string, sessionId: string | null): AsyncGenerator<TurnEvent> {
-    this.sent.push({ message, sessionId });
-    while (true) {
-      const event = this.queue.length
-        ? this.queue.shift()!
-        : await new Promise<TurnEvent | null>((resolve) => (this.push = resolve));
-      if (event === null) {
-        return;
-      }
-      yield event;
-    }
+  async remove(sessionId: string): Promise<void> {
+    this.removed.push(sessionId);
   }
 }
 
-/** Lets the store consume the events emitted so far. */
-const settle = () => new Promise((resolve) => setTimeout(resolve));
+function conversation(id: string, ...texts: string[]): Conversation {
+  return {
+    session: { ...SESSION, id },
+    messages: texts.map((content, i) => ({
+      role: i % 2 === 0 ? ('user' as const) : ('assistant' as const),
+      content,
+    })),
+    activeRunId: null,
+  };
+}
 
 describe('ChatStore', () => {
   let api: FakeChatService;
@@ -74,44 +71,60 @@ describe('ChatStore', () => {
 
   it('starts a conversation with the first message and streams the reply into it', async () => {
     const created: Session[] = [];
-    const turn = store.send('  Salut ', (session) => created.push(session));
+    const sending = store.send('  Salut ', (session) => created.push(session));
 
     expect(store.streaming()).toBe(true);
     expect(store.messages()).toEqual([
       { role: 'user', content: 'Salut' },
       { role: 'assistant', content: '' },
     ]);
-
-    api.emit({ type: 'session', session: SESSION });
-    api.emit({ type: 'text', text: 'Bon' });
-    api.emit({ type: 'text', text: 'jour' });
-    api.emit({ type: 'done', interrupted: false });
-    api.emit(null);
-    await turn;
+    await sending;
 
     expect(api.sent).toEqual([{ message: 'Salut', sessionId: null }]);
     expect(created).toEqual([SESSION]);
     expect(store.activeId()).toBe('s1');
     expect(store.sessions()).toEqual([SESSION]);
+    expect(api.watching!.runId).toBe('r1');
+
+    api.watching!.handlers.text('Bon');
+    api.watching!.handlers.text('jour');
+    expect(store.streaming()).toBe(true);
+    api.watching!.handlers.done(false);
+
     expect(store.messages().at(-1)).toEqual({ role: 'assistant', content: 'Bonjour' });
     expect(store.streaming()).toBe(false);
   });
 
   it('opens a previous conversation and continues it', async () => {
-    api.history['s1'] = [
-      { role: 'user', content: 'Salut' },
-      { role: 'assistant', content: 'Bonjour' },
-    ];
+    api.conversations['s1'] = conversation('s1', 'Salut', 'Bonjour');
 
     expect(await store.open('s1')).toBe(true);
-    expect(store.messages()).toEqual(api.history['s1']);
+    expect(store.messages()).toEqual(api.conversations['s1'].messages);
+    expect(store.streaming()).toBe(false);
 
-    const turn = store.send('Encore');
-    api.emit({ type: 'done', interrupted: false });
-    api.emit(null);
-    await turn;
+    await store.send('Encore');
 
     expect(api.sent).toEqual([{ message: 'Encore', sessionId: 's1' }]);
+    expect(store.sessions()).toEqual([]);
+  });
+
+  it('picks up the reply of a conversation whose run is still going', async () => {
+    api.conversations['s1'] = { ...conversation('s1', 'Raconte'), activeRunId: 'r7' };
+
+    await store.open('s1');
+
+    expect(api.watching!.runId).toBe('r7');
+    expect(store.streaming()).toBe(true);
+
+    // The events come from the start of the run: the whole reply so far, then the rest.
+    api.watching!.handlers.text('Il était ');
+    api.watching!.handlers.text('une fois');
+    api.watching!.handlers.done(false);
+
+    expect(store.messages()).toEqual([
+      { role: 'user', content: 'Raconte' },
+      { role: 'assistant', content: 'Il était une fois' },
+    ]);
   });
 
   it('reports a conversation that cannot be opened', async () => {
@@ -122,18 +135,16 @@ describe('ChatStore', () => {
   });
 
   it('stops a reply through the backend and marks it interrupted', async () => {
-    api.history['s1'] = [];
+    api.conversations['s1'] = conversation('s1');
     await store.open('s1');
-    const turn = store.send('Raconte');
-    api.emit({ type: 'text', text: 'Il était' });
-    await settle();
+    await store.send('Raconte');
+    api.watching!.handlers.text('Il était');
 
     await store.stop();
     expect(api.interrupted).toEqual(['s1']);
+    expect(store.streaming()).toBe(true);
 
-    api.emit({ type: 'done', interrupted: true });
-    api.emit(null);
-    await turn;
+    api.watching!.handlers.done(true);
 
     expect(store.messages().at(-1)).toEqual({
       role: 'assistant',
@@ -143,38 +154,53 @@ describe('ChatStore', () => {
     expect(store.streaming()).toBe(false);
   });
 
-  it('shows a failed turn in place of the reply', async () => {
-    api.stream = async function* () {
-      throw new Error('Panne');
-    };
+  it('shows a message that could not be sent in place of the reply', async () => {
+    api.failStart = true;
 
     await store.send('Salut');
+
+    expect(store.messages().at(-1)).toEqual({ role: 'assistant', content: '409', error: true });
+    expect(store.streaming()).toBe(false);
+  });
+
+  it('shows a failed run in place of the reply', async () => {
+    await store.send('Salut');
+    api.watching!.handlers.text('Bon');
+
+    api.watching!.handlers.failed('Panne');
 
     expect(store.messages().at(-1)).toEqual({ role: 'assistant', content: 'Panne', error: true });
     expect(store.streaming()).toBe(false);
   });
 
-  it('stops the reply of a conversation that is left while it streams', async () => {
-    api.history = { s1: [], s2: [{ role: 'user', content: 'Autre sujet' }] };
+  it('leaves a run going when its conversation is left', async () => {
+    api.conversations = { s1: conversation('s1'), s2: conversation('s2', 'Autre sujet') };
     await store.open('s1');
-    void store.send('Raconte');
-    api.emit({ type: 'text', text: 'Il était' });
-    await settle();
+    await store.send('Raconte');
+    const left = api.watching!;
 
     await store.open('s2');
 
-    expect(api.interrupted).toEqual(['s1']);
+    expect(left.stopped).toBe(true);
+    expect(api.interrupted).toEqual([]);
     expect(store.streaming()).toBe(false);
-    expect(store.messages()).toEqual([{ role: 'user', content: 'Autre sujet' }]);
-
-    // What the old stream still delivers does not leak into the new conversation.
-    api.emit({ type: 'text', text: ' une fois' });
-    await settle();
     expect(store.messages()).toEqual([{ role: 'user', content: 'Autre sujet' }]);
   });
 
+  it('reloads the conversation when the run can no longer be followed', async () => {
+    api.conversations['s1'] = conversation('s1');
+    await store.open('s1');
+    await store.send('Raconte');
+    api.conversations['s1'] = conversation('s1', 'Raconte', 'Il était une fois');
+
+    await api.watching!.handlers.lost();
+
+    expect(store.streaming()).toBe(false);
+    expect(store.messages()).toEqual(api.conversations['s1'].messages);
+  });
+
   it('deletes a conversation and leaves it when it was open', async () => {
-    api.history['s1'] = [{ role: 'user', content: 'Salut' }];
+    api.conversations['s1'] = conversation('s1', 'Salut');
     await store.loadSessions();
     await store.open('s1');
 

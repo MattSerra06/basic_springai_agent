@@ -6,6 +6,9 @@ import java.util.List;
 import com.example.agent.chat.ActiveTurns;
 import com.example.agent.chat.ChatEvent;
 import com.example.agent.chat.ChatService;
+import com.example.agent.chat.RunEvent;
+import com.example.agent.chat.RunStore;
+import com.example.agent.session.ConversationView;
 import com.example.agent.session.Conversations;
 import com.example.agent.session.MessageView;
 import com.example.agent.session.SessionView;
@@ -40,6 +43,8 @@ class AgentIntegrationTest {
 
     private static final String LONG_TEXT = "The quick brown fox jumps over the lazy dog. ".repeat(6);
 
+    private static final Duration TIMEOUT = Duration.ofSeconds(5);
+
     @TestConfiguration
     static class StubModelConfig {
 
@@ -52,6 +57,9 @@ class AgentIntegrationTest {
 
     @Autowired
     ChatService chatService;
+
+    @Autowired
+    RunStore runs;
 
     @Autowired
     Conversations conversations;
@@ -71,35 +79,76 @@ class AgentIntegrationTest {
     void aNewConversationIsStoredListedAndContinued() {
         model.repliesWith("Bonjour ", "Ada !");
 
-        List<ChatEvent> first = chatService.stream(null, "Bonjour, je m'appelle Ada").collectList().block();
+        ChatService.RunStarted first = chatService.start(null, "Bonjour, je m'appelle Ada");
 
-        assertThat(first).hasSize(4);
-        SessionView session = ((ChatEvent.Started) first.get(0)).session();
+        SessionView session = first.session();
         assertThat(session.title()).isEqualTo("Bonjour, je m'appelle Ada");
-        assertThat(first.subList(1, 4)).containsExactly(
+        assertThat(eventsOf(first.runId())).containsExactly(
                 new ChatEvent.Text("Bonjour "), new ChatEvent.Text("Ada !"), new ChatEvent.Done(false));
         assertThat(conversations.list()).extracting(SessionView::id).contains(session.id());
 
         model.repliesWith("Ada.");
-        List<ChatEvent> second = chatService.stream(session.id(), "Quel est mon nom ?").collectList().block();
+        ChatService.RunStarted second = chatService.start(session.id(), "Quel est mon nom ?");
 
-        // No Started event for an existing session, and the model was sent the history
-        assertThat(second).containsExactly(new ChatEvent.Text("Ada."), new ChatEvent.Done(false));
+        // Same session, and the model was sent the history
+        assertThat(second.session()).isEqualTo(conversations.get(session.id()));
+        assertThat(eventsOf(second.runId())).containsExactly(new ChatEvent.Text("Ada."), new ChatEvent.Done(false));
         assertThat(texts(model.prompts.getLast(), MessageType.USER, MessageType.ASSISTANT)).containsExactly(
                 "Bonjour, je m'appelle Ada", "Bonjour Ada !", "Quel est mon nom ?");
-        assertThat(conversations.messages(session.id())).containsExactly(
-                new MessageView("user", "Bonjour, je m'appelle Ada", false),
-                new MessageView("assistant", "Bonjour Ada !", false),
-                new MessageView("user", "Quel est mon nom ?", false),
-                new MessageView("assistant", "Ada.", false));
+        assertThat(conversations.open(session.id())).isEqualTo(new ConversationView(conversations.get(session.id()),
+                List.of(new MessageView("user", "Bonjour, je m'appelle Ada", false),
+                        new MessageView("assistant", "Bonjour Ada !", false),
+                        new MessageView("user", "Quel est mon nom ?", false),
+                        new MessageView("assistant", "Ada.", false)),
+                null));
+    }
+
+    @Test
+    void aRunGoesOnWithoutAnyClientAndCanBeReadAfterwards() {
+        String sessionId = converse(null, "Premier message").session().id();
+        model.repliesSlowlyWith(Duration.ofMillis(50), "un ", "deux ", "trois ");
+
+        String runId = chatService.start(sessionId, "Compte").runId();
+
+        // Nobody reads the events, the reply is produced and stored all the same
+        await().atMost(TIMEOUT).untilAsserted(() -> assertThat(conversations.open(sessionId).messages())
+                .endsWith(new MessageView("assistant", "un deux trois ", false)));
+
+        // A client that comes late gets everything, one that reconnects only what it missed
+        assertThat(runs.events(runId, 0).collectList().block(TIMEOUT)).extracting(RunEvent::sequence)
+                .containsExactly(1L, 2L, 3L, 4L);
+        assertThat(runs.events(runId, 2).collectList().block(TIMEOUT)).containsExactly(
+                new RunEvent(3, new ChatEvent.Text("trois ")), new RunEvent(4, new ChatEvent.Done(false)));
+    }
+
+    @Test
+    void aConversationOpenedDuringARunNamesItAndStopsAtItsMessage() {
+        String sessionId = converse(null, "Premier message").session().id();
+        model.repliesSlowlyWith(Duration.ofMillis(100), "un ", "deux ", "trois ", "quatre ");
+
+        String runId = chatService.start(sessionId, "Compte").runId();
+        runs.events(runId, 0).blockFirst(TIMEOUT);
+        ConversationView during = conversations.open(sessionId);
+
+        // The reply in progress is not among the messages: it is read from the run
+        assertThat(during.activeRunId()).isEqualTo(runId);
+        assertThat(during.messages()).containsExactly(
+                new MessageView("user", "Premier message", false),
+                new MessageView("assistant", "OK", false),
+                new MessageView("user", "Compte", false));
+
+        eventsOf(runId);
+        ConversationView after = conversations.open(sessionId);
+        assertThat(after.activeRunId()).isNull();
+        assertThat(after.messages()).endsWith(new MessageView("assistant", "un deux trois quatre ", false));
     }
 
     @Test
     void conversationsAreKeptApartAndCanBeDeleted() {
-        String first = start("Sujet A").id();
-        String second = start("Sujet B").id();
+        String first = converse(null, "Sujet A").session().id();
+        String second = converse(null, "Sujet B").session().id();
 
-        chatService.stream(second, "Suite B").blockLast();
+        converse(second, "Suite B");
 
         assertThat(texts(model.prompts.getLast(), MessageType.USER)).containsExactly("Sujet B", "Suite B");
         assertThat(conversations.list()).extracting(SessionView::id).contains(first, second);
@@ -107,71 +156,75 @@ class AgentIntegrationTest {
         conversations.delete(first);
 
         assertThat(conversations.list()).extracting(SessionView::id).contains(second).doesNotContain(first);
-        assertThatThrownBy(() -> chatService.stream(first, "Encore ?"))
+        assertThatThrownBy(() -> chatService.start(first, "Encore ?"))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
     }
 
     @Test
-    void aStopCutsTheReplyAndStoresWhatWasShown() {
-        String sessionId = start("Premier message").id();
+    void aStopCutsTheReplyAndStoresWhatWasStreamed() {
+        String sessionId = converse(null, "Premier message").session().id();
         model.repliesSlowlyWith(Duration.ofMillis(100), "un ", "deux ", "trois ", "quatre ", "cinq ", "six ");
 
-        StepVerifier.create(chatService.stream(sessionId, "Compte jusqu'à six"))
+        String runId = chatService.start(sessionId, "Compte jusqu'à six").runId();
+
+        StepVerifier.create(runs.events(runId, 0).map(RunEvent::event))
                 .expectNext(new ChatEvent.Text("un "))
                 .expectNext(new ChatEvent.Text("deux "))
                 .then(() -> activeTurns.interrupt(sessionId))
                 .expectNext(new ChatEvent.Done(true))
                 .expectComplete()
-                .verify(Duration.ofSeconds(5));
+                .verify(TIMEOUT);
 
-        assertThat(conversations.messages(sessionId)).endsWith(
+        assertThat(conversations.open(sessionId).messages()).endsWith(
                 new MessageView("user", "Compte jusqu'à six", false),
                 new MessageView("assistant", "un deux ", true));
 
         // The session is free again, and the next turn sees the interrupted reply
         model.repliesWith("D'accord.");
-        chatService.stream(sessionId, "Continue").blockLast();
+        converse(sessionId, "Continue");
         assertThat(texts(model.prompts.getLast(), MessageType.ASSISTANT)).contains("un deux ");
     }
 
     @Test
-    void aClientThatGoesAwayStopsTheTurn() {
-        String sessionId = start("Premier message").id();
-        model.repliesSlowlyWith(Duration.ofMillis(100), "un ", "deux ", "trois ", "quatre ");
+    void aSessionTakesOneTurnAtATime() {
+        String sessionId = converse(null, "Premier message").session().id();
+        model.repliesSlowlyWith(Duration.ofMillis(200), "un ", "deux ");
 
-        StepVerifier.create(chatService.stream(sessionId, "Compte"))
-                .expectNext(new ChatEvent.Text("un "))
-                .thenCancel()
-                .verify(Duration.ofSeconds(5));
+        String runId = chatService.start(sessionId, "Compte").runId();
 
-        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertThat(conversations.messages(sessionId))
-                .endsWith(new MessageView("assistant", "un ", true)));
+        assertThatThrownBy(() -> chatService.start(sessionId, "Et moi ?"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+        eventsOf(runId);
     }
 
     @Test
-    void aSessionTakesOneTurnAtATime() {
-        String sessionId = start("Premier message").id();
-        model.repliesSlowlyWith(Duration.ofMillis(200), "un ", "deux ");
+    void aFailedModelCallEndsTheRunWithAMessageForTheUser() {
+        String sessionId = converse(null, "Premier message").session().id();
+        model.repliesWith(prompt -> Flux.error(new IllegalStateException("secret upstream detail")));
 
-        Flux<ChatEvent> running = chatService.stream(sessionId, "Compte");
+        List<ChatEvent> events = converse(sessionId, "Et là ?").events();
 
-        assertThatThrownBy(() -> chatService.stream(sessionId, "Et moi ?"))
-                .isInstanceOfSatisfying(ResponseStatusException.class,
-                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
-        running.blockLast();
+        assertThat(events).hasSize(1);
+        assertThat(events.getFirst()).isInstanceOfSatisfying(ChatEvent.Failed.class,
+                failed -> assertThat(failed.message()).isNotBlank().doesNotContain("secret"));
+
+        // The session is not left busy
+        model.repliesWith("Me revoilà.");
+        assertThat(converse(sessionId, "Encore").events()).contains(new ChatEvent.Text("Me revoilà."));
     }
 
     @Test
     void aLongConversationIsSummarizedRecursively() {
         model.repliesWith(LONG_TEXT);
         model.summarizesIn(Duration.ofMillis(300));
-        String sessionId = start("FIRST " + LONG_TEXT).id();
+        String sessionId = converse(null, "FIRST " + LONG_TEXT).session().id();
 
         // Past the trigger, the oldest turn leaves the prompt and its summary stands in.
-        // The next message waits for the summary instead of racing it.
-        chatService.stream(sessionId, "SECOND " + LONG_TEXT).blockLast();
-        chatService.stream(sessionId, "THIRD " + LONG_TEXT).blockLast();
+        // The next message is accepted at once and its turn waits for the summary.
+        converse(sessionId, "SECOND " + LONG_TEXT);
+        converse(sessionId, "THIRD " + LONG_TEXT);
 
         assertThat(model.summaryPrompts).hasSize(1);
         List<String> sent = texts(model.prompts.getLast(), MessageType.USER, MessageType.ASSISTANT);
@@ -179,22 +232,24 @@ class AgentIntegrationTest {
         assertThat(sent.getLast()).startsWith("THIRD");
 
         // A later summary is built on the previous one
-        chatService.stream(sessionId, "FOURTH " + LONG_TEXT).blockLast();
+        converse(sessionId, "FOURTH " + LONG_TEXT);
         assertThat(model.summaryPrompts).hasSizeGreaterThanOrEqualTo(2);
         assertThat(model.summaryPrompts.get(1).getContents()).contains("PRIOR SUMMARY", "SUMMARY 1");
 
         // The UI still shows everything that was said, and none of the summaries
-        List<MessageView> shown = conversations.messages(sessionId);
+        List<MessageView> shown = conversations.open(sessionId).messages();
         assertThat(shown.getFirst().content()).startsWith("FIRST");
         assertThat(shown).noneMatch(message -> message.content().startsWith("SUMMARY"));
     }
 
     @Test
     void deletingAConversationStopsItsReply() {
-        String sessionId = start("Premier message").id();
+        String sessionId = converse(null, "Premier message").session().id();
         model.repliesSlowlyWith(Duration.ofMillis(100), "un ", "deux ", "trois ", "quatre ", "cinq ");
 
-        StepVerifier.create(chatService.stream(sessionId, "Compte"))
+        String runId = chatService.start(sessionId, "Compte").runId();
+
+        StepVerifier.create(runs.events(runId, 0).map(RunEvent::event))
                 .expectNext(new ChatEvent.Text("un "))
                 .then(() -> {
                     activeTurns.interrupt(sessionId);
@@ -202,14 +257,14 @@ class AgentIntegrationTest {
                 })
                 .expectNext(new ChatEvent.Done(true))
                 .expectComplete()
-                .verify(Duration.ofSeconds(5));
+                .verify(TIMEOUT);
 
         assertThat(conversations.list()).extracting(SessionView::id).doesNotContain(sessionId);
     }
 
     @Test
     void theModelCanSearchWhatACompactionTookOutOfItsContext() {
-        String sessionId = start("Mon code secret est PAPAYE-42").id();
+        String sessionId = converse(null, "Mon code secret est PAPAYE-42").session().id();
 
         // First round: the model calls conversation_search; second round: it answers
         model.repliesWith(prompt -> {
@@ -224,20 +279,25 @@ class AgentIntegrationTest {
                     .build());
         });
 
-        List<ChatEvent> events = chatService.stream(sessionId, "Quel est mon code ?").collectList().block();
+        List<ChatEvent> events = converse(sessionId, "Quel est mon code ?").events();
 
         assertThat(events).containsExactly(
                 new ChatEvent.Text("Je cherche."), new ChatEvent.Text("\n\nTrouvé."), new ChatEvent.Done(false));
         ToolResponseMessage toolResult = (ToolResponseMessage) model.prompts.getLast().getInstructions().getLast();
         assertThat(toolResult.getResponses().getFirst().responseData()).contains("PAPAYE-42");
-        assertThat(conversations.messages(sessionId)).endsWith(
+        assertThat(conversations.open(sessionId).messages()).endsWith(
                 new MessageView("user", "Quel est mon code ?", false),
                 new MessageView("assistant", "Je cherche.\n\nTrouvé.", false));
     }
 
-    private SessionView start(String firstMessage) {
-        List<ChatEvent> events = chatService.stream(null, firstMessage).collectList().block();
-        return ((ChatEvent.Started) events.getFirst()).session();
+    /** Sends a message and waits for the run to end. */
+    private Exchange converse(String sessionId, String message) {
+        ChatService.RunStarted started = chatService.start(sessionId, message);
+        return new Exchange(started.session(), eventsOf(started.runId()));
+    }
+
+    private List<ChatEvent> eventsOf(String runId) {
+        return runs.events(runId, 0).map(RunEvent::event).collectList().block(TIMEOUT);
     }
 
     private static List<String> texts(Prompt prompt, MessageType... types) {
@@ -246,5 +306,8 @@ class AgentIntegrationTest {
                 .filter(message -> wanted.contains(message.getMessageType()))
                 .map(Message::getText)
                 .toList();
+    }
+
+    private record Exchange(SessionView session, List<ChatEvent> events) {
     }
 }

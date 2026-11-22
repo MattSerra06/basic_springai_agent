@@ -31,6 +31,9 @@ agent:
     In a long conversation the oldest messages are replaced by a summary:
     use the conversation_search tool when you need a detail that is no longer
     in your context.
+  # Keep-alive line sent on the event stream while the model is silent; keep it
+  # under the idle timeout of any proxy in front of the backend.
+  stream-heartbeat: 15s
   compaction:
     # Estimated tokens of the conversation sent to the model at which the
     # oldest turns are summarized...

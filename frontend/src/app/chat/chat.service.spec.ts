@@ -1,86 +1,142 @@
 import { TestBed } from '@angular/core/testing';
-import { ChatService, TurnEvent } from './chat.service';
+import { ChatService, RunHandlers } from './chat.service';
 
-function sseResponse(...chunks: string[]): Response {
-  const encoder = new TextEncoder();
-  const body = new ReadableStream<Uint8Array>({
-    start(controller) {
-      chunks.forEach((chunk) => controller.enqueue(encoder.encode(chunk)));
-      controller.close();
-    },
-  });
-  return new Response(body, { headers: { 'Content-Type': 'text/event-stream' } });
+/** Stands in for the browser's EventSource, which jsdom does not have. */
+class FakeEventSource {
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSED = 2;
+  static last: FakeEventSource;
+
+  readyState = FakeEventSource.OPEN;
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onerror: (() => void) | null = null;
+  private readonly listeners = new Map<string, (event: Event) => void>();
+
+  constructor(readonly url: string) {
+    FakeEventSource.last = this;
+  }
+
+  addEventListener(name: string, listener: (event: Event) => void): void {
+    this.listeners.set(name, listener);
+  }
+
+  close(): void {
+    this.readyState = FakeEventSource.CLOSED;
+  }
+
+  /** The server sends an event; unnamed ones go to onmessage, as in a browser. */
+  receive(data: object, name?: string): void {
+    const event = new MessageEvent(name ?? 'message', { data: JSON.stringify(data) });
+    if (name) {
+      this.listeners.get(name)?.(event);
+    } else {
+      this.onmessage?.(event);
+    }
+  }
+
+  /** The connection drops; the browser retries unless it has given up. */
+  fail(readyState: number): void {
+    this.readyState = readyState;
+    this.onerror?.();
+  }
 }
 
-async function collect(stream: AsyncGenerator<TurnEvent>): Promise<TurnEvent[]> {
-  const events: TurnEvent[] = [];
-  for await (const event of stream) {
-    events.push(event);
-  }
-  return events;
+function recorder(): RunHandlers & { calls: unknown[][] } {
+  const calls: unknown[][] = [];
+  return {
+    calls,
+    text: (text) => calls.push(['text', text]),
+    done: (interrupted) => calls.push(['done', interrupted]),
+    failed: (message) => calls.push(['failed', message]),
+    lost: () => calls.push(['lost']),
+  };
 }
 
 describe('ChatService', () => {
   let service: ChatService;
 
   beforeEach(() => {
+    vi.stubGlobal('EventSource', FakeEventSource);
     service = TestBed.inject(ChatService);
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
-  it('yields the events of a turn, including ones split across network chunks', async () => {
+  it('sends a message and returns the run that will carry the reply', async () => {
+    const started = {
+      runId: 'r1',
+      session: { id: 's1', title: 'Salut', createdAt: '2026-01-01T00:00:00Z' },
+    };
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(
-        sseResponse(
-          'event:session\ndata: {"id":"s1","title":"Salut","createdAt":"2026-01-01T00:00:00Z"}\n\n',
-          'data: {"text":"Bon"}\n\ndata: {"te',
-          'xt":"jour"}\n\n',
-          'event:done\ndata:{"interrupted":true}\n\n',
-        ),
-      );
+      .mockResolvedValue(new Response(JSON.stringify(started), { status: 202 }));
 
-    expect(await collect(service.stream('Salut', null))).toEqual([
-      {
-        type: 'session',
-        session: { id: 's1', title: 'Salut', createdAt: '2026-01-01T00:00:00Z' },
-      },
-      { type: 'text', text: 'Bon' },
-      { type: 'text', text: 'jour' },
-      { type: 'done', interrupted: true },
-    ]);
+    expect(await service.start('Salut', null)).toEqual(started);
+    expect(fetchSpy.mock.calls[0][0]).toBe('/api/runs');
     expect(JSON.parse(fetchSpy.mock.calls[0][1]!.body as string)).toEqual({
       sessionId: null,
       message: 'Salut',
     });
   });
 
-  it('sends the session id of the conversation it continues', async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(sseResponse('event:done\ndata:{"interrupted":false}\n\n'));
-
-    await collect(service.stream('Encore', 's1'));
-
-    expect(JSON.parse(fetchSpy.mock.calls[0][1]!.body as string).sessionId).toBe('s1');
-  });
-
-  it('throws the message carried by an error event', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      sseResponse('data: {"text":"Bon"}\n\n', 'event: error\ndata: {"message":"Panne"}\n\n'),
+  it('throws when the server rejects a request', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(null, { status: 409 }),
     );
 
-    await expect(collect(service.stream('Salut', null))).rejects.toThrow('Panne');
+    await expect(service.start('Salut', 's1')).rejects.toThrow('409');
+    await expect(service.conversation('s1')).rejects.toThrow('409');
   });
 
-  it('throws when the server rejects the request', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 404 }));
+  it('follows the events of a run and closes the stream on its last event', () => {
+    const handlers = recorder();
+    service.watch('r 1', handlers);
+    const source = FakeEventSource.last;
 
-    await expect(collect(service.stream('Salut', 'nope'))).rejects.toThrow('404');
-    await expect(service.messages('nope')).rejects.toThrow('404');
+    source.receive({ text: 'Bon' });
+    source.receive({ text: 'jour' });
+    source.receive({ interrupted: true }, 'done');
+
+    expect(source.url).toBe('/api/runs/r%201/events');
+    expect(handlers.calls).toEqual([
+      ['text', 'Bon'],
+      ['text', 'jour'],
+      ['done', true],
+    ]);
+    expect(source.readyState).toBe(FakeEventSource.CLOSED);
+  });
+
+  it('reports a failed run and closes the stream', () => {
+    const handlers = recorder();
+    service.watch('r1', handlers);
+
+    FakeEventSource.last.receive({ message: 'Panne' }, 'failed');
+
+    expect(handlers.calls).toEqual([['failed', 'Panne']]);
+    expect(FakeEventSource.last.readyState).toBe(FakeEventSource.CLOSED);
+  });
+
+  it('lets the browser reconnect on a dropped connection, and reports one it gave up on', () => {
+    const handlers = recorder();
+    service.watch('r1', handlers);
+
+    FakeEventSource.last.fail(FakeEventSource.CONNECTING);
+    expect(handlers.calls).toEqual([]);
+
+    FakeEventSource.last.fail(FakeEventSource.CLOSED);
+    expect(handlers.calls).toEqual([['lost']]);
+  });
+
+  it('stops following without ending the run', () => {
+    const stop = service.watch('r1', recorder());
+
+    stop();
+
+    expect(FakeEventSource.last.readyState).toBe(FakeEventSource.CLOSED);
   });
 
   it('asks the backend to interrupt a session', async () => {

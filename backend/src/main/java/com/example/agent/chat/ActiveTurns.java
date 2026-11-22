@@ -1,6 +1,5 @@
 package com.example.agent.chat;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -16,29 +15,22 @@ import org.springframework.web.server.ResponseStatusException;
 @Component
 public class ActiveTurns {
 
-    /** How long a new message waits for the previous turn's compaction to finish. */
-    private static final Duration WRAP_UP_WAIT = Duration.ofMinutes(2);
-
     private final Map<String, Turn> turns = new ConcurrentHashMap<>();
 
     /**
      * Registers a new turn. When the session's previous turn has replied and is only
-     * wrapping up (compacting), this waits for it; when it is still generating its reply,
-     * the new turn is refused.
+     * wrapping up (compacting), the new turn is accepted and will start once that is
+     * done; when it is still generating its reply, the new turn is refused.
      * @throws ResponseStatusException 409 when the session is busy
      */
     Turn start(String sessionId) {
-        Turn turn = new Turn();
-        while (true) {
-            Turn previous = turns.putIfAbsent(sessionId, turn);
-            if (previous == null) {
-                return turn;
-            }
-            if (!previous.awaitWrapUp(WRAP_UP_WAIT)) {
+        return turns.compute(sessionId, (id, current) -> {
+            if (current != null && !current.hasReplied()) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
                         "A reply is already being generated for session " + sessionId);
             }
-        }
+            return new Turn(current);
+        });
     }
 
     void finish(String sessionId, Turn turn) {

@@ -67,7 +67,14 @@
   background: var(--accent);
   color: var(--on-accent);
 }
+/* The agent's reply reads as plain text on the page, not as a bubble. */
+.message.assistant {
+  max-width: 100%;
+  padding: 0;
+  background: none;
+}
 .message.error {
+  padding: 0.625rem 0.875rem;
   background: var(--danger-bg);
   color: var(--danger);
 }

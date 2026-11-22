@@ -29,9 +29,10 @@ public class SessionController {
         return conversations.list();
     }
 
-    @GetMapping("/{sessionId}/messages")
-    public List<MessageView> messages(@PathVariable String sessionId) {
-        return conversations.messages(sessionId);
+    /** The messages of a conversation, and the run still answering it, if any. */
+    @GetMapping("/{sessionId}")
+    public ConversationView open(@PathVariable String sessionId) {
+        return conversations.open(sessionId);
     }
 
     /** Stops the reply being generated for the session, if any. */

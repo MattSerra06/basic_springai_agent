@@ -4,20 +4,25 @@ import { ChatService, Message, Session } from './chat.service';
 /**
  * The state of the UI: the conversations of the sidebar, the one that is open, and the
  * reply being streamed into it.
+ *
+ * Replies are produced by the backend whether or not this page listens: leaving a
+ * conversation only stops following its run, and opening one whose run is still going
+ * picks the reply up from its start.
  */
 @Injectable({ providedIn: 'root' })
 export class ChatStore {
   private readonly api = inject(ChatService);
 
-  /** Aborts the HTTP stream of the turn in progress. */
-  private abort?: AbortController;
-  /** Bumped when another conversation is opened, so a stale load or stream is dropped. */
+  /** Stops following the run of the open conversation. */
+  private unwatch?: () => void;
+  /** Bumped when another conversation is opened, so what was pending for the old one is dropped. */
   private view = 0;
 
   readonly sessions = signal<Session[]>([]);
   /** The open conversation; null for a new one that has no message yet. */
   readonly activeId = signal<string | null>(null);
   readonly messages = signal<Message[]>([]);
+  /** A reply is being generated for the open conversation. */
   readonly streaming = signal(false);
   readonly loading = signal(false);
   /** A failure to show above the thread, e.g. the backend is down. */
@@ -32,15 +37,15 @@ export class ChatStore {
   }
 
   /**
-   * Shows a conversation, or a blank one for null. A reply still streaming into the
-   * conversation being left is stopped: the backend keeps what was generated so far.
+   * Shows a conversation, or a blank one for null. A reply still being generated for
+   * the conversation being left goes on in the background.
    * @returns false when the conversation could not be loaded
    */
   async open(sessionId: string | null): Promise<boolean> {
     if (sessionId === this.activeId()) {
       return true;
     }
-    this.leaveTurn();
+    this.detach();
     const view = ++this.view;
     this.activeId.set(sessionId);
     this.messages.set([]);
@@ -51,9 +56,13 @@ export class ChatStore {
 
     this.loading.set(true);
     try {
-      const messages = await this.api.messages(sessionId);
+      const conversation = await this.api.conversation(sessionId);
       if (view === this.view) {
-        this.messages.set(messages);
+        this.messages.set(conversation.messages);
+        if (conversation.activeRunId) {
+          this.messages.update((all) => [...all, { role: 'assistant', content: '' }]);
+          this.follow(conversation.activeRunId);
+        }
       }
       return true;
     } catch (error) {
@@ -80,8 +89,6 @@ export class ChatStore {
     }
 
     const view = this.view;
-    const abort = new AbortController();
-    this.abort = abort;
     this.problem.set(null);
     this.messages.update((all) => [
       ...all,
@@ -91,58 +98,43 @@ export class ChatStore {
     this.streaming.set(true);
 
     try {
-      for await (const event of this.api.stream(message, this.activeId(), abort.signal)) {
-        if (view !== this.view) {
-          return;
-        }
-        switch (event.type) {
-          case 'session':
-            this.activeId.set(event.session.id);
-            this.sessions.update((all) => [event.session, ...all]);
-            onSessionCreated?.(event.session);
-            break;
-          case 'text':
-            this.updateReply((reply) => ({ ...reply, content: reply.content + event.text }));
-            break;
-          case 'done':
-            if (event.interrupted) {
-              this.updateReply((reply) => ({ ...reply, interrupted: true }));
-            }
-            break;
-        }
+      const started = await this.api.start(message, this.activeId());
+      if (view !== this.view) {
+        return; // another conversation was opened meanwhile; the run goes on without us
       }
+      if (this.activeId() === null) {
+        this.activeId.set(started.session.id);
+        this.sessions.update((all) => [started.session, ...all]);
+        onSessionCreated?.(started.session);
+      }
+      this.follow(started.runId);
     } catch (error) {
-      if (view === this.view && !abort.signal.aborted) {
+      if (view === this.view) {
         this.updateReply((reply) => ({ ...reply, content: reason(error), error: true }));
-      }
-    } finally {
-      if (this.abort === abort) {
-        this.abort = undefined;
         this.streaming.set(false);
       }
     }
   }
 
   /**
-   * Stops the reply in progress. The backend ends the stream itself, with what was
-   * generated so far stored in the conversation; the connection is only cut from here
-   * when the backend cannot be told.
+   * Stops the reply in progress. The backend ends the run itself, with what was
+   * generated so far stored in the conversation, and says so on the event stream.
    */
   async stop(): Promise<void> {
     const sessionId = this.activeId();
     if (!this.streaming() || sessionId === null) {
-      this.abort?.abort();
       return;
     }
     try {
       await this.api.interrupt(sessionId);
     } catch {
-      this.abort?.abort();
+      // The backend cannot be reached: at least stop waiting for it.
+      this.detach();
       this.updateReply((reply) => ({ ...reply, interrupted: true }));
     }
   }
 
-  /** Deletes a conversation; the open one is left first, for a blank one. */
+  /** Deletes a conversation, which stops its reply; the open one is left first. */
   async remove(sessionId: string): Promise<void> {
     if (this.activeId() === sessionId) {
       await this.open(null);
@@ -156,14 +148,44 @@ export class ChatStore {
     this.sessions.update((all) => all.filter((session) => session.id !== sessionId));
   }
 
-  /** Stops the turn of the conversation being left, without waiting for it to end. */
-  private leaveTurn(): void {
+  /** Streams a run into the last message, which is the reply's placeholder. */
+  private follow(runId: string): void {
     const sessionId = this.activeId();
-    if (this.abort && sessionId !== null) {
-      void this.api.interrupt(sessionId).catch(() => undefined);
-    }
-    this.abort?.abort();
-    this.abort = undefined;
+    const view = this.view;
+    this.streaming.set(true);
+    this.unwatch = this.api.watch(runId, {
+      text: (text) => this.updateReply((reply) => ({ ...reply, content: reply.content + text })),
+      done: (interrupted) => {
+        if (interrupted) {
+          this.updateReply((reply) => ({ ...reply, interrupted: true }));
+        }
+        this.detach();
+      },
+      failed: (message) => {
+        this.updateReply((reply) => ({ ...reply, content: message, error: true }));
+        this.detach();
+      },
+      lost: async () => {
+        // The backend no longer serves this run: show what the conversation has stored.
+        this.detach();
+        try {
+          const conversation = await this.api.conversation(sessionId!);
+          if (view === this.view) {
+            this.messages.set(conversation.messages);
+          }
+        } catch (error) {
+          if (view === this.view) {
+            this.problem.set(`Le flux de la réponse a été perdu. ${reason(error)}`);
+          }
+        }
+      },
+    });
+  }
+
+  /** Stops following the run of the open conversation, if any. */
+  private detach(): void {
+    this.unwatch?.();
+    this.unwatch = undefined;
     this.streaming.set(false);
   }
 

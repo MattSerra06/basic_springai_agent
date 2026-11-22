@@ -1,10 +1,14 @@
 package com.example.agent.session;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
 import com.example.agent.AgentProperties;
+import com.example.agent.chat.Run;
+import com.example.agent.chat.RunStore;
+import org.jspecify.annotations.Nullable;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.session.CreateSessionRequest;
@@ -27,10 +31,12 @@ public class Conversations {
     private static final int MAX_TITLE_LENGTH = 60;
 
     private final SessionService sessionService;
+    private final RunStore runs;
     private final String user;
 
-    public Conversations(SessionService sessionService, AgentProperties properties) {
+    public Conversations(SessionService sessionService, RunStore runs, AgentProperties properties) {
         this.sessionService = sessionService;
+        this.runs = runs;
         this.user = properties.user();
     }
 
@@ -63,15 +69,33 @@ public class Conversations {
     }
 
     /**
+     * A conversation as the UI opens it: what was said, and the run that is still
+     * answering, if any. For such a run the messages stop at its user message: its reply
+     * is read from the run's events, from the first one.
+     */
+    public ConversationView open(String sessionId) {
+        SessionView session = get(sessionId);
+        Run activeRun = runs.findActive(sessionId).orElse(null);
+        if (activeRun == null) {
+            return new ConversationView(session, messages(sessionId, null), null);
+        }
+        List<MessageView> messages = new ArrayList<>(messages(sessionId, activeRun.startedAt()));
+        messages.add(new MessageView("user", activeRun.message(), false));
+        return new ConversationView(session, messages, activeRun.id());
+    }
+
+    /**
      * What was said, oldest first, read from the whole log: a compaction only changes
      * what is sent to the model, so the turns it summarized are still shown. Tool calls,
      * tool results and summaries are left out, and the replies of one turn (one per tool
      * round) are shown as one.
+     * @param before only the messages stored before this instant; {@code null} for all
      */
-    public List<MessageView> messages(String sessionId) {
+    List<MessageView> messages(String sessionId, @Nullable Instant before) {
         List<MessageView> messages = new ArrayList<>();
-        for (SessionEvent event : sessionService.getEvents(get(sessionId).id())) {
-            if (!event.hasMessage() || event.isSynthetic() || !StringUtils.hasText(event.getMessage().getText())) {
+        for (SessionEvent event : sessionService.getEvents(sessionId)) {
+            if (!event.hasMessage() || event.isSynthetic() || !StringUtils.hasText(event.getMessage().getText())
+                    || (before != null && !event.getTimestamp().isBefore(before))) {
                 continue;
             }
             String text = event.getMessage().getText();

@@ -1,18 +1,22 @@
 package com.example.agent.chat;
 
-import com.example.agent.session.SessionView;
-
-/** What a turn streams to the client, in order: Started?, Text*, Done. */
+/** What a run produces, in order: Text*, then Done or Failed. */
 public sealed interface ChatEvent {
 
-    /** The first message of a conversation created the session. */
-    record Started(SessionView session) implements ChatEvent {
-    }
-
+    /** A piece of the reply. */
     record Text(String text) implements ChatEvent {
     }
 
-    /** The turn is over; {@code interrupted} when a stop ended it. */
+    /** The run is over; {@code interrupted} when a stop ended it. */
     record Done(boolean interrupted) implements ChatEvent {
+    }
+
+    /** The run is over because it failed; {@code message} is safe to show to the user. */
+    record Failed(String message) implements ChatEvent {
+    }
+
+    /** Whether no event follows this one. */
+    default boolean endsRun() {
+        return !(this instanceof Text);
     }
 }

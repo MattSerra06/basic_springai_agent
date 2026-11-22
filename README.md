@@ -7,7 +7,11 @@ Monorepo d'un agent conversationnel en streaming :
 
 ## Fonctionnalités
 
-- **Streaming** de la réponse en Server-Sent Events.
+- **Réponses en arrière-plan** : envoyer un message démarre un *run* côté serveur et
+  rend la main aussitôt ; la réponse se lit sur un flux Server-Sent Events à part, qu'on
+  peut couper et reprendre là où on en était (`Last-Event-ID`). Aucune requête ne reste
+  ouverte le temps que le modèle travaille, et une réponse continue même si on recharge
+  la page ou qu'on change de conversation.
 - **Sessions** (Spring AI Session) : chaque conversation est une session dont l'historique
   est stocké dans une base H2 locale et renvoyé au modèle à chaque tour. Les conversations
   précédentes se rouvrent depuis le menu de gauche, et survivent à un redémarrage.
@@ -60,12 +64,32 @@ Tout est dans `backend/src/main/resources/application.yaml` :
 | `spring.datasource.url` | Base des sessions (H2 fichier ; PostgreSQL, MySQL et SQL Server sont aussi supportés par Spring AI Session) |
 | `agent.system-prompt` | Prompt système de l'agent |
 | `agent.user` | Propriétaire des conversations (pas d'authentification pour l'instant) |
+| `agent.stream-heartbeat` | Intervalle des lignes de keep-alive sur le flux quand le modèle est silencieux (à garder sous le délai d'inactivité des proxys) |
 | `agent.compaction.trigger-tokens` | Taille estimée de la conversation qui déclenche une compaction |
 | `agent.compaction.keep-tokens` | Part récente de la conversation gardée telle quelle après compaction |
 
 ## Comment ça marche
 
-Un tour de conversation (`ChatService`) passe par ces advisors du `ChatClient` :
+### Un message = un run
+
+1. `POST /api/runs` enregistre le message, démarre un worker en arrière-plan et répond
+   `202` avec l'identifiant du run.
+2. Le worker appelle le modèle et écrit chaque morceau de réponse dans le journal du run
+   (`RunStore`), numéroté 1, 2, 3…
+3. `GET /api/runs/{id}/events` rejoue le journal puis suit le direct, pour un
+   `EventSource`. Chaque événement porte son numéro en `id` : quand la connexion tombe,
+   le navigateur se reconnecte tout seul avec l'en-tête `Last-Event-ID` et le serveur
+   reprend juste après, sans perte ni doublon.
+
+Le journal des runs est en mémoire pour l'instant (`InMemoryRunStore`) : un run terminé
+reste lisible 10 minutes, puis la réponse se relit dans la session, où elle est stockée.
+`RunStore` est l'interface à réimplémenter pour passer à PostgreSQL (tables `run` et
+`run_event`, plus LISTEN/NOTIFY ou du polling pour le direct). Le signal d'arrêt
+(`ActiveTurns`) est lui aussi local au processus.
+
+### Un tour de conversation
+
+Le worker (`ChatService`) passe par ces advisors du `ChatClient` :
 
 1. `SessionTurnAdvisor` + `SessionMemoryAdvisor` (Spring AI Session) : ajoutent
    l'historique de la session au prompt et enregistrent les nouveaux messages, y compris
@@ -73,38 +97,43 @@ Un tour de conversation (`ChatService`) passe par ces advisors du `ChatClient` :
 2. `InterruptAdvisor` (spring-ai-agent-utils) : vérifié avant chaque appel au modèle de
    la boucle d'outils, il refuse l'appel suivant quand un arrêt a été demandé.
 
-Un arrêt (`POST /api/sessions/{id}/interrupt`) coupe aussi le flux en cours, ce qui ferme
-l'appel au modèle, puis la partie déjà affichée de la réponse est enregistrée.
+Un arrêt (`POST /api/sessions/{id}/interrupt`) coupe aussi le flux du modèle, ce qui
+ferme l'appel, puis la partie déjà produite de la réponse est enregistrée. Fermer la
+page n'arrête pas un run : seul cet appel le fait.
 
-Une fois la réponse envoyée, la session est compactée si nécessaire (`SessionCompactor`).
-Le message suivant de la même session attend la fin de cette compaction : l'historique ne
-change donc jamais pendant qu'un tour l'utilise.
+Une fois la réponse terminée, la session est compactée si nécessaire
+(`SessionCompactor`). Le message suivant est accepté tout de suite, mais son tour attend
+la fin de cette compaction : l'historique ne change donc jamais pendant qu'un tour
+l'utilise.
 
 ## API
 
 | Requête | Rôle |
 | --- | --- |
-| `POST /api/chat/stream` | Envoie `{"sessionId": "...", "message": "..."}` et répond en SSE ; sans `sessionId`, crée une conversation |
+| `POST /api/runs` | Envoie `{"sessionId": "...", "message": "..."}` ; sans `sessionId`, crée une conversation. Répond `202` avec `{"runId", "session"}` |
+| `GET /api/runs/{id}/events` | Flux SSE du run, reprenable avec `Last-Event-ID` |
 | `GET /api/sessions` | Conversations, la plus récente d'abord |
-| `GET /api/sessions/{id}/messages` | Messages d'une conversation |
+| `GET /api/sessions/{id}` | Messages d'une conversation, et `activeRunId` si une réponse est en cours |
 | `POST /api/sessions/{id}/interrupt` | Arrête la réponse en cours |
 | `DELETE /api/sessions/{id}` | Supprime une conversation |
 
-Événements du flux, dans l'ordre :
+Événements du flux d'un run :
 
 ```
-event:session
-data:{"id":"...","title":"...","createdAt":"..."}     (seulement pour une nouvelle conversation)
-
+id:1
 data:{"text":"Bon"}
+
+id:2
 data:{"text":"jour"}
 
+id:3
 event:done
 data:{"interrupted":false}
 ```
 
-Un échec en cours de réponse arrive sous la forme d'un `event:error` avec
-`{"message": "..."}` à la place de `done`.
+Un run qui échoue se termine par un `event:failed` avec `{"message": "..."}` à la place
+de `done`. Le flux se ferme après le dernier événement : le client doit alors fermer son
+`EventSource`, sinon le navigateur se reconnecte.
 
 ## Tests
 

@@ -47,22 +47,26 @@ class SessionControllerTest {
     }
 
     @Test
-    void returnsTheMessagesOfAConversation() throws Exception {
-        given(conversations.messages("s1")).willReturn(List.of(
-                new MessageView("user", "Bonjour", false), new MessageView("assistant", "Salut", true)));
+    void opensAConversationWithItsMessagesAndItsActiveRun() throws Exception {
+        given(conversations.open("s1")).willReturn(new ConversationView(
+                new SessionView("s1", "Bonjour", Instant.parse("2026-01-01T00:00:00Z")),
+                List.of(new MessageView("user", "Bonjour", false), new MessageView("assistant", "Salut", true)),
+                "r1"));
 
-        mockMvc.perform(get("/api/sessions/s1/messages"))
+        mockMvc.perform(get("/api/sessions/s1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].role").value("user"))
-                .andExpect(jsonPath("$[1].content").value("Salut"))
-                .andExpect(jsonPath("$[1].interrupted").value(true));
+                .andExpect(jsonPath("$.session.title").value("Bonjour"))
+                .andExpect(jsonPath("$.messages[0].role").value("user"))
+                .andExpect(jsonPath("$.messages[1].content").value("Salut"))
+                .andExpect(jsonPath("$.messages[1].interrupted").value(true))
+                .andExpect(jsonPath("$.activeRunId").value("r1"));
     }
 
     @Test
     void answersNotFoundForAnUnknownConversation() throws Exception {
-        given(conversations.messages("nope")).willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND));
+        given(conversations.open("nope")).willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND));
 
-        mockMvc.perform(get("/api/sessions/nope/messages")).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/sessions/nope")).andExpect(status().isNotFound());
     }
 
     @Test
