@@ -25,12 +25,16 @@ Monorepo d'un agent conversationnel en streaming :
   message que la compaction a sorti de son contexte.
 - **Interruption** : le bouton « Arrêter » coupe la réponse côté serveur ; ce qui a déjà
   été affiché est conservé dans l'historique, marqué comme interrompu.
+- **Recherche web** (optionnelle, [Linkup](https://docs.linkup.so)) : avec une clé
+  `LINKUP_API_KEY`, le modèle peut chercher sur le web, lire une page et lancer une
+  recherche approfondie. Voir « Outils web ».
 
 ## Prérequis
 
 - Java 21+
 - Node.js 22+
 - Une clé API OpenAI
+- Facultatif : une clé API Linkup (https://app.linkup.so) pour la recherche web
 
 ## Lancer en local
 
@@ -39,8 +43,16 @@ Backend (port 8080) :
 ```bash
 cd backend
 export OPENAI_API_KEY=sk-...
+export LINKUP_API_KEY=...   # facultatif : active les outils web
 ./mvnw spring-boot:run
 ```
+
+Sous PowerShell : `$env:OPENAI_API_KEY = "sk-..."`, `$env:LINKUP_API_KEY = "..."`, puis
+`.\mvnw.cmd spring-boot:run`.
+
+Sans `LINKUP_API_KEY`, l'application démarre normalement et les outils web ne sont
+simplement pas proposés au modèle. Le log de démarrage dit lequel des deux cas s'applique
+(`Web tools are on` / `Web tools are off`). La clé n'est jamais écrite dans les logs.
 
 Frontend (port 4200, `/api` est proxifié vers le backend) :
 
@@ -75,6 +87,38 @@ Tout est dans `backend/src/main/resources/application.yaml` :
 | `agent.stream-heartbeat` | Intervalle des lignes de keep-alive sur le flux quand le modèle est silencieux (à garder sous le délai d'inactivité des proxys) |
 | `agent.compaction.trigger-tokens` | Taille estimée de la conversation qui déclenche une compaction |
 | `agent.compaction.keep-tokens` | Part récente de la conversation gardée telle quelle après compaction |
+| `agent.linkup.api-key` | Clé API Linkup, lue depuis `LINKUP_API_KEY` ; vide = pas d'outils web |
+| `agent.linkup.base-url` | Racine de l'API Linkup (`https://api.linkup.so/v1`) |
+| `agent.linkup.connect-timeout`, `agent.linkup.timeout` | Délais de connexion et de réponse d'un appel à Linkup (une recherche `deep` prend jusqu'à 30 s) |
+| `agent.linkup.max-result-chars` | Taille maximale du texte qu'un résultat d'outil renvoie au modèle : une page lue est coupée là (le modèle peut lire la suite), les extraits d'une recherche se la partagent |
+| `agent.linkup.instructions` | Paragraphe ajouté au prompt système quand les outils web sont actifs |
+| `agent.linkup.research.enabled` | `false` pour ne pas donner au modèle les outils de recherche approfondie (payants à la tâche) |
+| `agent.linkup.research.poll-interval`, `agent.linkup.research.max-wait` | Pendant que le modèle attend une recherche approfondie : fréquence des vérifications, et attente maximale d'un appel d'outil |
+
+## Outils web
+
+Avec une clé Linkup, le modèle reçoit ces outils en plus de `conversation_search`. Leurs
+paramètres portent les noms de l'API Linkup ; les descriptions envoyées au modèle lui
+disent quand choisir chaque option.
+
+| Outil | Rôle | Paramètres |
+| --- | --- | --- |
+| `linkup_search` | Recherche web (`POST /search`) | `query`, `depth` (`flash`, `fast`, `standard`, `deep`), `outputType` (`searchResults`, `sourcedAnswer`, `structured`), `structuredOutputSchema`, `includeSources`, `includeInlineCitations`, `includeImages`, `fromDate`, `toDate`, `sinceDays`, `includeDomains`, `excludeDomains`, `maxResults` |
+| `linkup_fetch` | Lit une page ou un PDF dont on connaît l'URL (`POST /fetch`) | `url`, `renderJs`, `mode` (`standard`, `pro`), `extractImages`, `includeRawContent`, `schema`, `instructions`, `offset` |
+| `linkup_research_start` | Lance une recherche approfondie, asynchrone (`POST /research`) : 2 à 20 minutes, 0,25 à 2,50 USD la tâche | `query`, `reasoningDepth` (`S`, `M`, `L`, `XL`), `mode` (`answer`, `investigate`, `research`), `outputType` (`sourcedAnswer`, `structured`), `structuredOutputSchema`, `fromDate`, `toDate`, `includeDomains`, `excludeDomains` |
+| `linkup_research_result` | État ou résultat d'une recherche approfondie (`GET /research/{id}`) | `id`, `waitSeconds` |
+| `linkup_credit_balance` | Crédits restants du compte (`GET /credits/balance`) | aucun |
+
+`sinceDays` (les N derniers jours, converti en `fromDate`) et `offset` (lire la suite
+d'une page coupée) n'existent pas dans l'API : ils sont ajoutés par le backend. Chaque
+résultat de recherche porte la date du jour, que le modèle ne connaît pas autrement.
+
+Une erreur de l'API (clé refusée, crédits épuisés, limite de débit, délai dépassé, page
+illisible) ne fait pas échouer le run : elle revient au modèle comme résultat d'outil,
+avec ce qu'il convient de faire (corriger, réessayer, prévenir l'utilisateur).
+
+L'interface n'affiche pas encore les appels d'outil : pendant une recherche, le flux du
+run ne porte que les lignes de keep-alive.
 
 ## Sécurité
 
@@ -161,4 +205,5 @@ cd frontend && npm test -- --watch=false
 ```
 
 Les tests d'intégration du backend tournent sur une base en mémoire avec un modèle
-scripté : aucune clé API n'est nécessaire.
+scripté, et un serveur HTTP local à la place de l'API Linkup : aucune clé API n'est
+nécessaire et aucun appel ne sort de la machine.

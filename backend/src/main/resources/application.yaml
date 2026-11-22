@@ -59,3 +59,30 @@ agent:
     trigger-tokens: 60000
     # ...keeping this much of the most recent conversation verbatim.
     keep-tokens: 20000
+  # Web tools, backed by the Linkup API (https://docs.linkup.so).
+  linkup:
+    # Never commit a key: export LINKUP_API_KEY before starting the app. Without
+    # one the app starts all the same and the model is not given the web tools.
+    api-key: ${LINKUP_API_KEY:}
+    base-url: https://api.linkup.so/v1
+    connect-timeout: 5s
+    # One call to the API; a deep search takes up to 30 s.
+    timeout: 60s
+    # Most text one tool result carries to the model, in characters: a fetched
+    # page is cut there (the model can read on), the passages of a search share it.
+    max-result-chars: 40000
+    # Added to the system prompt when the web tools are on.
+    instructions: >
+      You can search the web with linkup_search and read a page with linkup_fetch.
+      Use them whenever the answer depends on recent or checkable facts rather
+      than guessing, and cite the URLs of the sources you rely on.
+    research:
+      # The research agent (linkup_research_start, linkup_research_result): a task
+      # runs 2 to 20 minutes and costs 0.25 to 2.50 USD. Set to false to keep the
+      # model to search and fetch.
+      enabled: true
+      # While the model waits for a task: how often it is checked (Linkup
+      # rate-limits above one request per second)...
+      poll-interval: 5s
+      # ...and the longest one tool call waits before reporting it still runs.
+      max-wait: 60s
