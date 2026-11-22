@@ -314,14 +314,19 @@
 .gui-linkcard:hover .gui-arrow {
   translate: 2px -2px;
 }
+/*
+ * The sources are a footnote: under a hairline, on the page itself, in small print. They
+ * back the answer and must not be louder than it.
+ */
 .gui-sources {
-  padding: var(--space-4) var(--space-5);
-  border: var(--rule);
-  border-radius: var(--sheet-radius);
-  background: var(--color-surface);
+  padding-top: var(--space-3);
+  border-top: var(--rule);
 }
 .gui-sources > p {
-  margin: 0 0 var(--space-2);
+  margin: 0 0 var(--space-1);
+  font: var(--type-label);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
 }
 .gui-sources ol {
   display: grid;
@@ -353,7 +358,6 @@
 }
 .gui-source-title {
   font-size: var(--text-small);
-  font-weight: 600;
   line-height: var(--leading-text);
 }
 .gui-sources a:hover .gui-source-title {
