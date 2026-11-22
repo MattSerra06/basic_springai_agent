@@ -66,8 +66,10 @@ public class ChatController {
      * <li>default events — {@code {"text":"..."}}, the reply's text deltas;</li>
      * <li>{@code event:thinking} — {@code {"text":"..."}}, deltas of the model's summary
      * of its reasoning, to show while the reply is not there yet;</li>
-     * <li>{@code event:tool} — {@code {"name":"...","activity":"..."}}, a tool the model
-     * starts and what it says the call is for;</li>
+     * <li>{@code event:tool} — {@code {"id":"1","name":"...","activity":"...","input":"{...}"}},
+     * a tool the model starts, what it says the call is for, and its arguments;</li>
+     * <li>{@code event:tool-result} — {@code {"id":"1","output":"...","failed":false}},
+     * what that call answered;</li>
      * <li>{@code event:done} — {@code {"interrupted":false}}, last;</li>
      * <li>{@code event:failed} — {@code {"message":"..."}}, last, instead of
      * {@code done} when the run failed.</li>
@@ -103,8 +105,13 @@ public class ChatController {
         return switch (runEvent.event()) {
             case ChatEvent.Text text -> sse.data(Map.of("text", text.text())).build();
             case ChatEvent.Thinking thinking -> sse.event("thinking").data(Map.of("text", thinking.text())).build();
-            case ChatEvent.ToolCall call ->
-                sse.event("tool").data(Map.of("name", call.name(), "activity", call.activity())).build();
+            case ChatEvent.ToolCall call -> sse.event("tool")
+                    .data(Map.of("id", call.id(), "name", call.name(), "activity", call.activity(), "input",
+                            call.input()))
+                    .build();
+            case ChatEvent.ToolResult result -> sse.event("tool-result")
+                    .data(Map.of("id", result.id(), "output", result.output(), "failed", result.failed()))
+                    .build();
             case ChatEvent.Done done -> sse.event("done").data(Map.of("interrupted", done.interrupted())).build();
             case ChatEvent.Failed failed -> sse.event("failed").data(Map.of("message", failed.message())).build();
         };

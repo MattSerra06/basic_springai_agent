@@ -54,18 +54,11 @@
           @let live = store.streaming() && $last;
           @if (message.role === 'assistant' && !message.error) {
             <!-- What the agent is doing, while the reply is not there; then the tools it ran. -->
-            @let doing = message.activity | activityLine: live : !!message.content;
-            @if (doing.busy) {
-              <div class="activity">
-                <span class="pending" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-                <!-- Drawn anew when the words change, so that they come in. -->
-                @for (text of [doing.text]; track text) {
-                  <span class="doing">{{ text }}</span>
-                }
-              </div>
-            } @else if (doing.text) {
-              <div class="activity kicker">{{ doing.text }}</div>
-            }
+            <app-activity
+              [activity]="message.activity"
+              [live]="live"
+              [started]="!!message.content"
+            />
           }
           @if (message.role === 'assistant' && !message.error && message.content) {
             <!-- A reply is an interface the agent wrote, with or without text before it. -->
@@ -83,7 +76,7 @@
                   (send)="sendText($event)"
                 />
               } @placeholder {
-                <p class="pending" aria-label="Réponse en cours"><i></i><i></i><i></i><i></i></p>
+                <p class="waiting" aria-label="Réponse en cours"><span class="loader"></span></p>
               }
             }
           } @else if (message.content) {

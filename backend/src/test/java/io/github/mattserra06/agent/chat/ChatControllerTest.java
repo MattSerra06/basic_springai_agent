@@ -135,14 +135,16 @@ class ChatControllerTest {
     void namesTheEventsThatSayWhatTheModelIsDoing() throws Exception {
         Run run = runs.create("s1", "Hi");
         runs.append(run.id(), new ChatEvent.Thinking("**Plan**"));
-        runs.append(run.id(), new ChatEvent.ToolCall("linkup_search", "Je compare les prix"));
+        runs.append(run.id(), new ChatEvent.ToolCall("1", "linkup_search", "Je compare les prix", "{\"query\":\"prix\"}"));
+        runs.append(run.id(), new ChatEvent.ToolResult("1", "12 euros", false));
         runs.append(run.id(), new ChatEvent.Done(false));
 
         // The map of an event is written in no set order
         assertThat(events(run.id(), null)).containsSubsequence(
                 "id:1", "event:thinking", "{\"text\":\"**Plan**\"}",
-                "id:2", "event:tool", "id:3", "event:done")
-                .contains("\"name\":\"linkup_search\"", "\"activity\":\"Je compare les prix\"");
+                "id:2", "event:tool", "id:3", "event:tool-result", "id:4", "event:done")
+                .contains("\"name\":\"linkup_search\"", "\"activity\":\"Je compare les prix\"",
+                        "\"input\":\"{\\\"query\\\":\\\"prix\\\"}\"", "\"output\":\"12 euros\"", "\"failed\":false");
     }
 
     @Test

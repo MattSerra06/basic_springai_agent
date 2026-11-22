@@ -1,0 +1,132 @@
+/*
+ * What the agent is doing, on one line, while the reply is not there: the small sun at
+ * work, then its own words — what it thinks about, the tool it runs. Once the reply is
+ * being written, the tools it ran stay above it as a label.
+ */
+:host {
+  display: block;
+}
+:host:not(:empty) {
+  margin-bottom: var(--space-3);
+}
+.line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.doing,
+.done {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.doing {
+  font-family: var(--font-display);
+  font-size: var(--text-entry);
+  font-style: italic;
+  line-height: var(--leading-text);
+  color: var(--color-ink-soft);
+  animation: come var(--medium) var(--ease-out) backwards;
+}
+@keyframes come {
+  from {
+    opacity: 0;
+    translate: 0 var(--space-2);
+  }
+}
+
+/*
+ * The line unfolds. Nothing says so but the pointer, and a chevron that is hardly there
+ * until the line is pointed at.
+ */
+summary {
+  list-style: none;
+  cursor: pointer;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+.trail > summary {
+  width: fit-content;
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+}
+.chevron {
+  flex: none;
+  color: var(--color-ink-soft);
+  opacity: 0.25;
+  transition:
+    opacity var(--fast),
+    rotate var(--medium) var(--ease-out);
+}
+summary:hover .chevron,
+summary:focus-visible .chevron,
+[open] > summary .chevron {
+  opacity: 1;
+}
+[open] > summary .chevron {
+  rotate: 180deg;
+}
+
+/* The trail: what happened, in order, along a hairline. Small print, beside the reply. */
+.steps {
+  display: grid;
+  gap: var(--space-4);
+  margin: var(--space-3) 0 var(--space-2);
+  padding: var(--space-1) 0 var(--space-1) var(--space-4);
+  border-left: var(--rule);
+  list-style: none;
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+  color: var(--color-ink-soft);
+  animation: come var(--medium) var(--ease-out) backwards;
+}
+.steps li {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.steps p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.steps .title {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.running {
+  font-style: italic;
+}
+
+/* What a tool was given and what it answered: folded too, in mono, never taller than a screenful. */
+.io > summary {
+  width: fit-content;
+  font: var(--type-label);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.3em;
+}
+.io > summary:hover,
+.io[open] > summary {
+  color: var(--color-ink);
+}
+.io.failed > summary {
+  color: var(--color-danger);
+}
+pre {
+  max-height: 18rem;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  overflow: auto;
+  border: var(--rule);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: var(--text-label);
+  line-height: var(--leading-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

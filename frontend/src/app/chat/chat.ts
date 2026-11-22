@@ -17,7 +17,7 @@ import { Router, RouterLink } from '@angular/router';
 import { GeneratedUi } from '../openui/generated-ui';
 import { SessionList } from '../sessions/session-list';
 import { ThemeToggle } from '../theme/theme-toggle';
-import { ActivityLinePipe } from './activity';
+import { ActivityTrail } from './activity-trail';
 import { ChatStore } from './chat.store';
 import { ReplyPartsPipe } from './reply-parts';
 import { RunSettingsBar } from './run-settings';
@@ -33,7 +33,7 @@ const NARROW = '(max-width: 48rem)';
     '(document:keydown.escape)': 'menuOpen.set(false)',
   },
   imports: [
-    ActivityLinePipe,
+    ActivityTrail,
     GeneratedUi,
     ReplyPartsPipe,
     RouterLink,

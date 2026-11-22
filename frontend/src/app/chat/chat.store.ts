@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { thought, toolStarted, writing } from './activity';
+import { thought, toolFinished, toolStarted, writing } from './activity';
 import { ChatService, Message, RunOptions, RunSettings, Session } from './chat.service';
 
 /**
@@ -237,10 +237,13 @@ export class ChatStore {
       thinking: (text) => {
         this.updateReply((reply) => ({ ...reply, activity: thought(reply.activity, text) }));
       },
-      tool: (name, activity) => {
+      tool: (call) => {
+        this.updateReply((reply) => ({ ...reply, activity: toolStarted(reply.activity, call) }));
+      },
+      toolResult: (id, output, failed) => {
         this.updateReply((reply) => ({
           ...reply,
-          activity: toolStarted(reply.activity, name, activity),
+          activity: toolFinished(reply.activity, id, output, failed),
         }));
       },
       done: (interrupted) => {

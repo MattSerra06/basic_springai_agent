@@ -48,7 +48,8 @@ function recorder(): RunHandlers & { calls: unknown[][] } {
     calls,
     text: (text) => calls.push(['text', text]),
     thinking: (text) => calls.push(['thinking', text]),
-    tool: (name, activity) => calls.push(['tool', name, activity]),
+    tool: (call) => calls.push(['tool', call]),
+    toolResult: (id, output, failed) => calls.push(['toolResult', id, output, failed]),
     done: (interrupted) => calls.push(['done', interrupted]),
     failed: (message) => calls.push(['failed', message]),
     lost: () => calls.push(['lost']),
@@ -146,14 +147,24 @@ describe('ChatService', () => {
     const source = FakeEventSource.last;
 
     source.receive({ text: '**Plan**' }, 'thinking');
-    source.receive({ name: 'linkup_search', activity: 'Je cherche la météo' }, 'tool');
-    source.receive({ name: 'linkup_fetch' }, 'tool');
+    const call = {
+      id: '1',
+      name: 'linkup_search',
+      activity: 'Je cherche la météo',
+      input: '{"query":"météo"}',
+    };
+    source.receive(call, 'tool');
+    source.receive({ id: '1', output: '{"sources":[]}', failed: false }, 'tool-result');
+    source.receive({ id: '2', name: 'linkup_fetch' }, 'tool');
+    source.receive({ id: '2', output: 'Linkup error', failed: true }, 'tool-result');
     source.receive({ text: 'Il pleut.' });
 
     expect(handlers.calls).toEqual([
       ['thinking', '**Plan**'],
-      ['tool', 'linkup_search', 'Je cherche la météo'],
-      ['tool', 'linkup_fetch', ''],
+      ['tool', call],
+      ['toolResult', '1', '{"sources":[]}', false],
+      ['tool', { id: '2', name: 'linkup_fetch', activity: '', input: '' }],
+      ['toolResult', '2', 'Linkup error', true],
       ['text', 'Il pleut.'],
     ]);
     expect(source.readyState).toBe(FakeEventSource.OPEN);

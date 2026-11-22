@@ -173,12 +173,18 @@ describe('ChatStore', () => {
 
     api.watching.handlers.thinking('**Je regarde** la météo');
     expect(store.messages().at(-1)!.activity).toEqual({
-      thinking: '**Je regarde** la météo',
-      tools: [],
+      steps: [{ kind: 'thought', text: '**Je regarde** la météo' }],
       now: 'thinking',
     });
 
-    api.watching.handlers.tool('linkup_search', 'Je cherche la météo de Lyon');
+    const call = {
+      id: '1',
+      name: 'linkup_search',
+      activity: 'Je cherche la météo de Lyon',
+      input: '{"query":"météo Lyon"}',
+    };
+    api.watching.handlers.tool(call);
+    api.watching.handlers.toolResult('1', '{"sources":[]}', false);
     api.watching.handlers.text('Il pleut.');
     api.watching.handlers.done(false);
 
@@ -186,8 +192,10 @@ describe('ChatStore', () => {
       role: 'assistant',
       content: 'Il pleut.',
       activity: {
-        thinking: '**Je regarde** la météo',
-        tools: [{ name: 'linkup_search', activity: 'Je cherche la météo de Lyon' }],
+        steps: [
+          { kind: 'thought', text: '**Je regarde** la météo' },
+          { kind: 'tool', ...call, output: '{"sources":[]}', failed: false },
+        ],
         now: 'writing',
       },
     });

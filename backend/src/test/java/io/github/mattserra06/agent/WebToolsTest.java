@@ -137,9 +137,20 @@ class WebToolsTest {
         assertThat(result.path("sources")).isEqualTo(JsonMapper.shared().readTree("""
                 [{"name": "Annual Report", "url": "https://www.microsoft.com/ar24",
                   "content": "Revenue was $245.1 billion."}]"""));
-        assertThat(events).containsExactly(new ChatEvent.Text("Je cherche."),
-                new ChatEvent.ToolCall("linkup_search", "Je cherche le chiffre d'affaires 2024 de Microsoft"),
-                new ChatEvent.Text("\n\n245,1 milliards."), new ChatEvent.Done(false));
+        // The run tells the call, with what it is for and its arguments, then what it answered
+        assertThat(events).hasSize(5);
+        assertThat(events.get(0)).isEqualTo(new ChatEvent.Text("Je cherche."));
+        assertThat(events.get(1)).isInstanceOfSatisfying(ChatEvent.ToolCall.class, call -> {
+            assertThat(call.id()).isEqualTo("1");
+            assertThat(call.name()).isEqualTo("linkup_search");
+            assertThat(call.activity()).isEqualTo("Je cherche le chiffre d'affaires 2024 de Microsoft");
+            assertThat(JsonMapper.shared().readTree(call.input())).isEqualTo(JsonMapper.shared().readTree("""
+                    {"query": "Microsoft 2024 revenue", "depth": "fast", "outputType": "searchResults",
+                     "includeDomains": ["microsoft.com"], "maxResults": 3}"""));
+        });
+        assertThat(events.get(2)).isEqualTo(new ChatEvent.ToolResult("1", toolResult(), false));
+        assertThat(events.subList(3, 5)).containsExactly(new ChatEvent.Text("\n\n245,1 milliards."),
+                new ChatEvent.Done(false));
     }
 
     @Test
@@ -153,7 +164,9 @@ class WebToolsTest {
         assertThat(toolResult()).startsWith("Linkup error: The Linkup account has no credits left")
                 .doesNotContain(FakeLinkup.API_KEY);
         // A call that does not say what it is for is reported all the same
-        assertThat(events).containsExactly(new ChatEvent.Text("Je cherche."), new ChatEvent.ToolCall("linkup_fetch", ""),
+        assertThat(events).containsExactly(new ChatEvent.Text("Je cherche."),
+                new ChatEvent.ToolCall("1", "linkup_fetch", "", "{\"url\":\"https://example.com\"}"),
+                new ChatEvent.ToolResult("1", toolResult(), false),
                 new ChatEvent.Text("\n\nPlus de crédits."), new ChatEvent.Done(false));
     }
 

@@ -49,6 +49,10 @@ class AgentIntegrationTest {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(5);
 
+    /** The call of {@link #searchThenAnswer}, as the run tells it: without what it is for among its arguments. */
+    private static final ChatEvent.ToolCall SEARCH = new ChatEvent.ToolCall("1", "conversation_search",
+            "Je relis nos échanges", "{\"query\":\"secret\"}");
+
     @TestConfiguration
     static class StubModelConfig {
 
@@ -313,9 +317,14 @@ class AgentIntegrationTest {
                 .noneMatch(text -> text.contains("PAPAYE-42"));
 
         // ...and gets it back from the tool, which searches the whole log
-        assertThat(events).containsExactly(
-                new ChatEvent.Text("Je cherche."), new ChatEvent.ToolCall("conversation_search", "Je relis nos échanges"),
-                new ChatEvent.Text("\n\nTrouvé."), new ChatEvent.Done(false));
+        assertThat(events).filteredOn(event -> !(event instanceof ChatEvent.ToolResult)).containsExactly(
+                new ChatEvent.Text("Je cherche."), SEARCH, new ChatEvent.Text("\n\nTrouvé."), new ChatEvent.Done(false));
+        // ...and the run tells what the tool answered, right after the call
+        assertThat(events).element(2).isInstanceOfSatisfying(ChatEvent.ToolResult.class, result -> {
+            assertThat(result.id()).isEqualTo(SEARCH.id());
+            assertThat(result.output()).contains("PAPAYE-42");
+            assertThat(result.failed()).isFalse();
+        });
         ToolResponseMessage toolResult = (ToolResponseMessage) model.prompts.getLast().getInstructions().getLast();
         assertThat(toolResult.getResponses().getFirst().responseData()).contains("PAPAYE-42");
         assertThat(conversations.open(sessionId).messages()).endsWith(
@@ -360,8 +369,8 @@ class AgentIntegrationTest {
                 && model.prompts.getLast().getInstructions().getLast() instanceof ToolResponseMessage);
         activeTurns.interrupt(sessionId);
 
-        assertThat(eventsOf(runId)).containsExactly(new ChatEvent.Text("Je cherche."),
-                new ChatEvent.ToolCall("conversation_search", "Je relis nos échanges"), new ChatEvent.Done(true));
+        assertThat(eventsOf(runId)).filteredOn(event -> !(event instanceof ChatEvent.ToolResult))
+                .containsExactly(new ChatEvent.Text("Je cherche."), SEARCH, new ChatEvent.Done(true));
         assertThat(conversations.open(sessionId).messages()).endsWith(
                 new MessageView("user", "Quel est mon code ?", false),
                 new MessageView("assistant", "Je cherche.", false));
@@ -377,7 +386,8 @@ class AgentIntegrationTest {
 
         StepVerifier.create(runs.events(runId, 0).map(RunEvent::event))
                 .expectNext(new ChatEvent.Text("Je cherche."))
-                .expectNext(new ChatEvent.ToolCall("conversation_search", "Je relis nos échanges"))
+                .expectNext(SEARCH)
+                .expectNextMatches(event -> event instanceof ChatEvent.ToolResult)
                 .expectNext(new ChatEvent.Text("\n\nTrouvé : "))
                 .then(() -> activeTurns.interrupt(sessionId))
                 .expectNext(new ChatEvent.Done(true))

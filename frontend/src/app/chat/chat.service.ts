@@ -53,13 +53,26 @@ export interface RunSettings {
   reasoningEffort: string;
 }
 
+/** A tool call, as a run tells it when it starts. */
+export interface ToolCall {
+  /** Names the call within its run. */
+  id: string;
+  name: string;
+  /** What the model says the call is for; possibly empty. */
+  activity: string;
+  /** Its arguments, as JSON. */
+  input: string;
+}
+
 /** What following a run reports. Exactly one of done, failed and lost ends it. */
 export interface RunHandlers {
   text(text: string): void;
   /** A piece of the model's summary of its reasoning. */
   thinking(text: string): void;
-  /** The model starts a tool; activity is what it says the call is for, possibly empty. */
-  tool(name: string, activity: string): void;
+  /** The model starts a tool. */
+  tool(call: ToolCall): void;
+  /** A tool the model started has answered, or failed. */
+  toolResult(id: string, output: string, failed: boolean): void;
   done(interrupted: boolean): void;
   failed(message: string): void;
   /** The event stream is gone for good, e.g. the backend no longer knows the run. */
@@ -139,8 +152,17 @@ export class ChatService {
     source.addEventListener('tool', (event) => {
       const call = JSON.parse((event as MessageEvent).data);
       if (call.name) {
-        handlers.tool(call.name, call.activity ?? '');
+        handlers.tool({
+          id: String(call.id ?? ''),
+          name: call.name,
+          activity: call.activity ?? '',
+          input: call.input ?? '',
+        });
       }
+    });
+    source.addEventListener('tool-result', (event) => {
+      const result = JSON.parse((event as MessageEvent).data);
+      handlers.toolResult(String(result.id ?? ''), result.output ?? '', result.failed === true);
     });
     source.addEventListener('done', (event) => {
       const interrupted = JSON.parse((event as MessageEvent).data).interrupted === true;

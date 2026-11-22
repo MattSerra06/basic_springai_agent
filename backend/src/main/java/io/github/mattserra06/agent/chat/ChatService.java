@@ -27,6 +27,11 @@ public class ChatService {
 
     private static final String FAILURE_MESSAGE = "L'appel au modèle a échoué. Consultez les logs du backend.";
 
+    /** How much of the arguments and of the answer of a tool call the run keeps to show, in characters. */
+    private static final int SHOWN_INPUT = 2_000;
+
+    private static final int SHOWN_OUTPUT = 6_000;
+
     private final ChatClient chatClient;
     private final Conversations conversations;
     private final ActiveTurns activeTurns;
@@ -111,9 +116,19 @@ public class ChatService {
                             .reasoningEffort(selection.reasoningEffort())
                             .reasoningSummary(selection.reasoningSummary()))
                     .user(run.message())
-                    // Each tool call says what it is for before it runs: see AgentTools
-                    .tools((Object[]) tools.reportingTo(
-                            (tool, activity) -> report(run, new ChatEvent.ToolCall(tool, activity))))
+                    // Each tool call says what it is for, and is told to the run: see AgentTools
+                    .tools((Object[]) tools.reportingTo(new AgentTools.Listener() {
+
+                        @Override
+                        public void started(String id, String tool, String activity, String input) {
+                            report(run, new ChatEvent.ToolCall(id, tool, activity, cut(input, SHOWN_INPUT)));
+                        }
+
+                        @Override
+                        public void finished(String id, String output, boolean failed) {
+                            report(run, new ChatEvent.ToolResult(id, cut(output, SHOWN_OUTPUT), failed));
+                        }
+                    }))
                     .advisors(SessionAdvisors.session(sessionId))
                     .advisors(InterruptAdvisor.builder().interruptSignal(turn::isInterrupted).build())
                     .stream()
@@ -175,6 +190,17 @@ public class ChatService {
         catch (RuntimeException ex) {
             log.debug("Run {} no longer takes events: {}", run.id(), ex.getMessage());
         }
+    }
+
+    /**
+     * What a tool was given or answered, as the user is shown it: the model has all of
+     * it, the log of the run only its beginning.
+     */
+    static String cut(String text, int limit) {
+        if (text.length() <= limit) {
+            return text;
+        }
+        return text.substring(0, limit) + "\n… (" + text.length() + " caractères au total)";
     }
 
     /** Ends the turn on a thread of its own: compaction is a model call. */

@@ -1,0 +1,55 @@
+<!-- The words of the line: drawn anew when they change, so that they come in. -->
+<ng-template #words>
+  @if (line().busy) {
+    <span class="loader" aria-hidden="true"></span>
+  }
+  @for (text of [line().text]; track text) {
+    <span [class]="line().busy ? 'doing' : 'kicker done'">{{ text }}</span>
+  }
+</ng-template>
+
+@if (line().busy || line().text) {
+  @if (entries().length) {
+    <details class="trail">
+      <summary class="line" title="Voir le détail">
+        <ng-container [ngTemplateOutlet]="words" />
+        <svg class="icon chevron" viewBox="0 0 20 20" width="12" height="12" aria-hidden="true">
+          <path d="m5 7.5 5 5 5-5" />
+        </svg>
+      </summary>
+      <ol class="steps">
+        @for (entry of entries(); track $index) {
+          <li>
+            @if (entry.kind === 'thought') {
+              <p class="kicker">Réflexion</p>
+              @for (block of entry.blocks; track $index) {
+                <p [class.title]="block.title">{{ block.text }}</p>
+              }
+            } @else {
+              <p class="kicker">{{ entry.label }}</p>
+              @if (entry.what) {
+                <p>{{ entry.what }}</p>
+              }
+              <details class="io">
+                <summary>Entrée</summary>
+                <pre>{{ entry.input }}</pre>
+              </details>
+              @if (entry.output !== null) {
+                <details class="io" [class.failed]="entry.failed">
+                  <summary>{{ entry.failed ? 'Erreur' : 'Sortie' }}</summary>
+                  <pre>{{ entry.output }}</pre>
+                </details>
+              } @else if (live()) {
+                <p class="running">En cours…</p>
+              }
+            }
+          </li>
+        }
+      </ol>
+    </details>
+  } @else {
+    <div class="line">
+      <ng-container [ngTemplateOutlet]="words" />
+    </div>
+  }
+}

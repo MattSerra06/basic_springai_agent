@@ -78,7 +78,7 @@
 }
 
 /* While the reply is being written, a caret follows its last word. */
-.live p:not(.pending)::after {
+.live p:not(.waiting)::after {
   content: '';
   display: inline-block;
   width: 0.5em;
@@ -94,68 +94,9 @@
   }
 }
 
-/*
- * What the agent is doing, on one line, while the reply is not there: the level meter,
- * then its own words — what it thinks about, the tool it runs. Once the reply is being
- * written, the tools it ran stay above it as a label.
- */
-.activity {
+/* The interface of a reply is on its way: the small sun (the loader of styles.css), alone. */
+.message .waiting {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-width: 0;
-  margin-bottom: var(--space-3);
-}
-.activity .pending {
-  flex: none;
-}
-.activity.kicker {
-  display: block;
-}
-.doing,
-.activity.kicker {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.doing {
-  min-width: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-entry);
-  font-style: italic;
-  line-height: var(--leading-text);
-  color: var(--color-ink-soft);
-  animation: rise var(--medium) var(--ease-out) backwards;
-}
-
-/* The level meter: four bars that swing. */
-.message .pending {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.1875rem;
-  height: var(--space-5);
-}
-.pending i {
-  width: 0.1875rem;
-  height: 100%;
-  background: var(--color-accent);
-  transform-origin: bottom;
-  scale: 1 0.3;
-  animation: swing 0.9s ease-in-out infinite alternate;
-}
-.pending i:nth-child(2) {
-  animation-delay: -0.6s;
-}
-.pending i:nth-child(3) {
-  animation-delay: -0.25s;
-}
-.pending i:nth-child(4) {
-  animation-delay: -0.75s;
-}
-@keyframes swing {
-  to {
-    scale: 1;
-  }
 }
 
 .message .note {
