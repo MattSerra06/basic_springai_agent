@@ -1,0 +1,172 @@
+/*
+ * The thread: what the user said on the right, on orange; the agent's reply on the left,
+ * as plain text on the page. One rhythm: 8 from a label to its text, 24 from a message
+ * to its reply, 48 before the next message.
+ */
+.thread {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding-block: var(--space-5) var(--space-7);
+}
+
+.message {
+  flex: none;
+  animation: rise var(--slow) var(--ease-out) backwards;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 var(--space-3);
+  }
+}
+.message.user {
+  align-self: flex-end;
+  max-width: min(85%, 34rem);
+  margin-top: var(--space-7);
+}
+.message.assistant {
+  margin-top: var(--space-5);
+}
+.message:first-of-type {
+  margin-top: 0;
+}
+
+.who {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+/* The side and the colour already say who wrote it: the label is for screen readers. */
+.user .who {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Where to read: the label of the agent is the one that is orange. */
+.assistant .who {
+  color: var(--color-accent-text);
+}
+
+.message p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+  font-size: var(--text-body);
+  line-height: var(--leading-reading);
+}
+/* A sheet of burnt orange, its corner turned towards the one who speaks. */
+.user p {
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
+  background: linear-gradient(150deg, var(--color-accent), var(--color-accent-strong));
+  box-shadow: var(--shadow-field);
+  color: var(--color-on-accent);
+  line-height: var(--leading-text);
+}
+
+/* While the reply is being written, a caret follows its last word. */
+.live p:not(.pending)::after {
+  content: '';
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 0.2em;
+  vertical-align: -0.15em;
+  background: var(--color-accent);
+  animation: blink 0.8s ease-in-out infinite alternate;
+}
+@keyframes blink {
+  to {
+    opacity: 0.25;
+  }
+}
+
+/* Waiting for the first word: four bars that swing like a level meter. */
+.message .pending {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.1875rem;
+  height: var(--space-5);
+}
+.pending i {
+  width: 0.1875rem;
+  height: 100%;
+  background: var(--color-accent);
+  transform-origin: bottom;
+  scale: 1 0.3;
+  animation: swing 0.9s ease-in-out infinite alternate;
+}
+.pending i:nth-child(2) {
+  animation-delay: -0.6s;
+}
+.pending i:nth-child(3) {
+  animation-delay: -0.25s;
+}
+.pending i:nth-child(4) {
+  animation-delay: -0.75s;
+}
+@keyframes swing {
+  to {
+    scale: 1;
+  }
+}
+
+.message .note {
+  margin-top: var(--space-3);
+  font: var(--type-label);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+
+/* Failures: of the page (problem) or of a reply (error). */
+.problem,
+.message.error p {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--color-danger);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  font-size: var(--text-body);
+  line-height: var(--leading-text);
+}
+.problem {
+  flex: none;
+  margin-bottom: var(--space-5);
+  animation: rise var(--medium) var(--ease-out) backwards;
+}
+.error .who {
+  color: var(--color-danger);
+}
+
+/* A conversation being opened: its lines are not there yet. */
+.loading i {
+  display: block;
+  height: 0.875rem;
+  margin-top: var(--space-4);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+      90deg,
+      var(--color-hover) 40%,
+      var(--color-glow),
+      var(--color-hover) 60%
+    )
+    0 0 / 300% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+.loading i:nth-of-type(2) {
+  width: 82%;
+}
+.loading i:nth-of-type(3) {
+  width: 46%;
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+}

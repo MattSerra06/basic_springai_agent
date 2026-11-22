@@ -1,99 +1,124 @@
+/* A panel of wood: fine grain, and the light of the window falling on its top. */
 :host {
+  --pad: var(--space-4);
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 1rem 0.75rem;
-  box-sizing: border-box;
-  background: var(--surface);
-  border-right: 1px solid var(--line);
+  overflow: hidden;
+  padding: 0 var(--pad) var(--space-4);
+  border-right: var(--rule);
+  background:
+    repeating-linear-gradient(90deg, var(--color-wood-grain) 0 1px, transparent 1px 13px),
+    repeating-linear-gradient(90deg, var(--color-wood-grain) 0 2px, transparent 2px 37px),
+    linear-gradient(190deg, var(--color-glow), transparent 45%), var(--color-wood);
+  transition: padding var(--medium) var(--ease-out);
+}
+/* Folded: a rail just wide enough for its two buttons. */
+:host(.collapsed) {
+  --pad: calc((var(--rail-width) - var(--control)) / 2);
 }
 
-.new {
-  display: block;
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 0.75rem;
-  background: var(--bg);
-  color: inherit;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-nav {
-  flex: 1;
-  overflow-y: auto;
-  margin-top: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-.none {
-  margin: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  color: var(--muted);
-}
-
-.item {
+/* On the same line as the bar of the page. */
+.head {
+  flex: none;
   display: flex;
   align-items: center;
-  border-radius: 0.625rem;
+  height: var(--bar);
+  margin-bottom: var(--space-4);
 }
-.item:hover,
-.item.active {
-  background: var(--hover);
-}
-.item a {
+.brand {
   flex: 1;
   min-width: 0;
-  padding: 0.5rem 0.25rem 0.5rem 0.75rem;
-  color: inherit;
-  text-decoration: none;
-}
-.title {
-  display: block;
+  margin: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
+  font-family: var(--font-display);
+  font-size: var(--text-brand);
+  font-style: italic;
+  line-height: var(--bar);
+  letter-spacing: var(--tracking-display);
   white-space: nowrap;
-  font-size: 0.9375rem;
+  transition: opacity var(--fast);
 }
-.active .title {
-  font-weight: 600;
-}
-time {
-  font-size: 0.75rem;
-  color: var(--muted);
+.brand span {
+  color: var(--color-accent-text);
 }
 
-.item button {
-  flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
-  margin-right: 0.25rem;
-  border: 0;
-  border-radius: 0.5rem;
-  background: transparent;
-  color: var(--muted);
-  font-size: 1.125rem;
-  cursor: pointer;
+.fold {
+  flex: none;
+}
+.arrow {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform var(--medium) var(--ease-swing);
+}
+:host(.collapsed) .arrow {
+  transform: scaleX(-1);
+}
+
+/* The label gives way as the panel narrows; the plus is all that is left on the rail. */
+.new {
+  flex: none;
+  display: flex;
+  min-width: 0;
+}
+.label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding-left: calc(var(--space-4) - 1px);
+  color: inherit;
+  white-space: nowrap;
+  transition:
+    opacity var(--fast),
+    padding var(--medium) var(--ease-out);
+}
+:host(.collapsed) .label {
+  padding-left: 0;
+}
+.plus {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: calc(var(--control) - 2px);
+}
+.new:hover .cross {
+  rotate: 90deg;
+}
+
+.contents {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: var(--space-6);
+  transition:
+    opacity var(--medium),
+    visibility 0s;
+}
+.heading {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: var(--space-2);
+  border-bottom: var(--rule-ink);
+}
+:host(.collapsed) :is(.brand, .label, .contents) {
   opacity: 0;
 }
-.item:hover button,
-.item:focus-within button {
-  opacity: 1;
+/* Hidden for good once faded, so that nothing in it can be reached. */
+:host(.collapsed) .contents {
+  visibility: hidden;
+  transition:
+    opacity var(--fast),
+    visibility 0s var(--fast);
 }
-.item button:hover {
-  color: var(--danger);
-}
-/* No hover on touch screens: keep the button visible. */
-@media (hover: none) {
-  .item button {
-    opacity: 1;
+/* Keeps its width while the panel folds, rather than rewrapping at every frame. */
+@media (min-width: 48.0625rem) {
+  .contents {
+    width: calc(var(--sidebar-width) - 2 * var(--space-4) - 1px);
   }
 }
 
-.new:focus-visible,
-.item a:focus-visible,
-.item button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+.fold:focus-visible,
+.new:focus-visible {
+  outline-offset: -3px;
 }

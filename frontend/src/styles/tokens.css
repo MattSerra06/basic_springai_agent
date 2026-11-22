@@ -1,0 +1,126 @@
+/*
+ * The design tokens: every colour, font, size, space and radius of the UI is named here
+ * and nowhere else. Components only use var(--…).
+ *
+ * The mood is a wooden flat in the sun, read like a magazine: paper and oak by day,
+ * walnut and lamplight by night, burnt orange throughout.
+ *
+ * Each colour is written once as light-dark(day, night). The night value applies when
+ * the system asks for a dark scheme, or when the user picked it (data-theme on <html>,
+ * set by ThemeService and by the inline script of index.html).
+ */
+:root {
+  color-scheme: light dark;
+
+  /*
+   * Colours — light-dark(day, night).
+   * Four layers, each visibly apart from the one behind: page, panel, field, menu.
+   */
+  --color-bg: light-dark(#f4ead7, #130c07); /* the page: paper · brown-black */
+  --color-wood: light-dark(#e3c797, #311f11); /* the panel: honey oak · walnut */
+  --color-wood-grain: light-dark(rgb(122 74 26 / 0.045), rgb(255 190 120 / 0.03));
+  --color-surface: light-dark(#fffdf8, #2a1c11); /* the field: a sheet in the light */
+  --color-raised: light-dark(#fffdf8, #38261a); /* menus, lifted off the page */
+  --color-selected: light-dark(#f8e8cc, #55331a); /* the open conversation, on the panel */
+  --color-hover: light-dark(rgb(35 21 11 / 0.09), rgb(255 200 140 / 0.12));
+
+  --color-ink: light-dark(#23150b, #f4e7d2);
+  --color-ink-soft: light-dark(#593d28, #cdb59a);
+  --color-solid: light-dark(#23150b, #4d3421); /* a solid button: ink by day, lit walnut by night */
+  --color-on-solid: light-dark(#f4ead7, #f4e7d2);
+  --color-rule: light-dark(rgb(35 21 11 / 0.16), rgb(244 231 210 / 0.14)); /* hairlines */
+  --color-rule-strong: light-dark(#86633f, #9a7a5d); /* edges of controls, 3:1 */
+
+  /* Burnt orange is kept for the action that sends, what is selected, and what is live. */
+  --color-accent: light-dark(#bf430d, #ff8b3d);
+  --color-accent-strong: light-dark(#a2360a, #ffa35f);
+  --color-accent-soft: light-dark(#f5d3b6, #5a2c12); /* the action at rest */
+  --color-on-accent: light-dark(#fff8ec, #1c0e04);
+  --color-accent-text: light-dark(#8f2f06, #ff9a56); /* orange, as text */
+
+  --color-sun: light-dark(#e8962e, #a8480f); /* the record of the blank page: noon · embers */
+  --color-sun-deep: light-dark(#d46018, #5a2408);
+  --color-sheen: light-dark(rgb(255 250 235 / 0.34), rgb(255 200 140 / 0.16)); /* light on it */
+  --color-glow: light-dark(rgb(255 176 82 / 0.36), rgb(255 140 50 / 0.13));
+  --color-danger: light-dark(#96211a, #ffa091);
+  --color-danger-bg: light-dark(#f6dccf, #3b1711);
+  --color-scrim: light-dark(rgb(35 21 11 / 0.45), rgb(0 0 0 / 0.62));
+  --color-shadow: light-dark(rgb(74 44 18 / 0.24), rgb(0 0 0 / 0.6));
+
+  /*
+   * Type. Three families, one job each: the serif names things (titles, questions,
+   * models), the sans is what is read, the mono labels in capitals.
+   */
+  --font-display: 'Instrument Serif', 'Bodoni 72', 'Bodoni MT', Didot, 'Times New Roman', serif;
+  --font-text:
+    'Instrument Sans Variable', 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', sans-serif;
+  --font-mono:
+    'IBM Plex Mono', ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Five sizes, no more. */
+  --text-label: 0.75rem; /* mono capitals: labels, dates, hints */
+  --text-body: 1.125rem; /* sans: replies, the composer, errors */
+  --text-entry: 1.25rem; /* serif: conversations, models */
+  --text-brand: clamp(1.75rem, 1.6rem + 0.62vw, 2rem); /* serif: the name of the app */
+  --text-hero: clamp(3.5rem, 1.5rem + 8vw, 6.5rem); /* serif: the blank page */
+
+  --type-label: 500 var(--text-label) / 1.3 var(--font-mono);
+  --leading-tight: 1.04;
+  --leading-snug: 1.2;
+  --leading-text: 1.5;
+  --leading-reading: 1.65;
+  --tracking-caps: 0.1em;
+  --tracking-display: -0.015em;
+
+  /* Space */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+
+  /*
+   * Shape. Controls come in two heights. Radii: full inside the field, md for every
+   * other control, lg for sheets (the field, the menus).
+   */
+  --control: 2.75rem; /* a comfortable touch target */
+  --control-sm: 2rem; /* compact, where a pointer is precise */
+  --glyph: 1rem; /* the drawn icons: plus, cross, bars */
+  --stroke: 1.5px; /* their line, and that of the SVG icons */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1.25rem;
+  --radius-full: 999px;
+  --rule: 1px solid var(--color-rule);
+  --rule-ink: 1px solid var(--color-ink);
+  --shadow-field: 0 1rem 2.5rem -1.25rem var(--color-shadow);
+  --shadow-pop:
+    0 1.5rem 3rem -1rem var(--color-shadow), 0 0.25rem 0.75rem -0.25rem var(--color-shadow);
+  --focus-ring: 2px solid var(--color-accent-text);
+
+  /* Layout */
+  --sidebar-width: 18.5rem;
+  --rail-width: 4rem;
+  --bar: 3.75rem; /* the top line: the head of the panel and the bar of the page */
+  --page-width: 42rem; /* the thread and the composer share it */
+  --menu-width: 21rem;
+  --submenu-width: 12rem;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-swing: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --fast: 0.16s;
+  --medium: 0.32s;
+  --slow: 0.6s;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}

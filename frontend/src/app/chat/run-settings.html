@@ -1,22 +1,83 @@
-<label>
-  <span>Modèle</span>
-  <select (change)="modelChange.emit($any($event.target).value)">
-    @for (choice of options().models; track choice.id) {
-      <option [value]="choice.id" [selected]="choice.id === model()">{{ choice.label }}</option>
-    }
-  </select>
-</label>
+<button
+  #trigger
+  type="button"
+  class="btn btn-ghost trigger"
+  aria-haspopup="menu"
+  [attr.aria-expanded]="open()"
+  [attr.aria-label]="'Modèle ' + modelLabel() + ', raisonnement ' + effortLabel()"
+  (click)="toggle()"
+>
+  <span class="model">{{ modelLabel() }}</span>
+  <span class="effort kicker">{{ effortLabel() }}</span>
+  <svg class="icon chevron" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+    <path d="M2.5 4.5 6 8l3.5-3.5" />
+  </svg>
+</button>
 
-<label>
-  <span>Raisonnement</span>
-  <input
-    type="range"
-    min="0"
-    step="1"
-    [max]="options().reasoningEfforts.length - 1"
-    [value]="effortIndex()"
-    [attr.aria-valuetext]="effortLabel()"
-    (input)="chooseEffort($any($event.target).valueAsNumber)"
-  />
-  <output>{{ effortLabel() }}</output>
-</label>
+<div
+  #menu
+  class="menu"
+  role="menu"
+  aria-label="Modèle et raisonnement"
+  [class.open]="open()"
+  [attr.inert]="open() ? null : ''"
+  (keydown)="onMenuKeydown($event)"
+>
+  <p class="kicker" aria-hidden="true">Modèle</p>
+  @for (choice of options().models; track choice.id) {
+    <button
+      type="button"
+      class="option"
+      role="menuitemradio"
+      [attr.aria-checked]="choice.id === model()"
+      (click)="modelChange.emit(choice.id)"
+      (pointerenter)="leaveEfforts($event)"
+    >
+      <span class="name">{{ choice.label }}</span>
+    </button>
+  }
+
+  <div class="sub" role="none">
+    <button
+      #effortItem
+      type="button"
+      class="option more"
+      role="menuitem"
+      aria-haspopup="menu"
+      [attr.aria-expanded]="effortsOpen()"
+      (click)="toggleEfforts($event)"
+      (pointerenter)="hoverEfforts($event)"
+    >
+      <span class="kicker">Raisonnement</span>
+      <span class="name">{{ effortLabel() }}</span>
+      <svg class="icon chevron" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+        <path d="M2.5 4.5 6 8l3.5-3.5" />
+      </svg>
+    </button>
+
+    <div
+      #efforts
+      class="submenu"
+      role="menu"
+      aria-label="Effort de raisonnement"
+      [class.open]="effortsOpen()"
+      [attr.inert]="effortsOpen() ? null : ''"
+    >
+      <div class="sheet">
+        @for (effort of options().reasoningEfforts; track effort) {
+          <button
+            type="button"
+            class="option"
+            role="menuitemradio"
+            [attr.aria-checked]="$index === effortIndex()"
+            [style.--level]="($index + 1) / $count"
+            (click)="chooseEffort(effort)"
+          >
+            <span class="name">{{ labelOf(effort) }}</span>
+            <span class="gauge" aria-hidden="true"></span>
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,26 +1,203 @@
-:root {
-  color-scheme: light dark;
-  --bg: light-dark(#fbfaf8, #17171a);
-  --surface: light-dark(#f0eee9, #232327);
-  --hover: light-dark(#e4e1d9, #2f2f35);
-  --line: light-dark(#dedbd3, #35353b);
-  --text: light-dark(#1d1c1a, #ececee);
-  --muted: light-dark(#6d6a63, #9b9ba3);
-  --accent: light-dark(#b4532f, #e08a63);
-  --on-accent: light-dark(#ffffff, #1b1210);
-  --danger: light-dark(#a3271f, #ff9a91);
-  --danger-bg: light-dark(#fbe9e6, #3a1f1d);
+/* Fonts are served by the app itself (npm packages), not fetched from a third party. */
+@import '@fontsource/instrument-serif/400.css';
+@import '@fontsource/instrument-serif/400-italic.css';
+@import '@fontsource-variable/instrument-sans/wght.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import './styles/tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
-  font-size: 1rem;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-text);
+  font-size: var(--text-body);
+  line-height: var(--leading-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-rule-strong) transparent;
+}
+
+/* The one small label: capitals in mono, widely spaced. */
+.kicker {
+  margin: 0;
+  font: var(--type-label);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+
+/*
+ * Buttons. One base and three looks: ghost (an icon or a quiet control), ink (a solid
+ * secondary action) and primary (the orange one: there is a single primary per screen).
+ */
+.btn {
+  display: inline-grid;
+  place-items: center;
+  min-width: var(--control);
+  height: var(--control);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-ink);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background var(--fast),
+    border-color var(--fast),
+    color var(--fast),
+    scale var(--fast) var(--ease-swing);
+}
+.btn:active:not(:disabled) {
+  scale: 0.95;
+}
+.btn:disabled {
+  cursor: default;
+}
+.btn-sm {
+  min-width: var(--control-sm);
+  height: var(--control-sm);
+}
+.btn-ghost:hover {
+  background: var(--color-hover);
+}
+.btn-ink {
+  border-color: var(--color-solid);
+  background: var(--color-solid);
+  color: var(--color-on-solid);
+}
+.btn-ink:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.btn-primary:hover:enabled {
+  background: var(--color-accent-strong);
+}
+/* At rest it stays orange, only paler: the action is still where to look. */
+.btn-primary:disabled {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+}
+/* No pointer to be precise with: the compact controls grow to a full touch target. */
+@media (hover: none) {
+  .btn-sm {
+    min-width: var(--control);
+    height: var(--control);
+  }
+}
+
+/* Icons: one line weight for the SVG ones and the drawn ones. */
+.icon {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--stroke);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* A plus made of two bars; turned by 45°, the cross that deletes. */
+.cross {
+  position: relative;
+  display: block;
+  width: var(--glyph);
+  height: var(--glyph);
+  transition: rotate var(--medium) var(--ease-swing);
+}
+.cross::before,
+.cross::after {
+  content: '';
+  position: absolute;
+  top: calc(50% - var(--stroke) / 2);
+  left: 0;
+  width: 100%;
+  height: var(--stroke);
+  background: currentColor;
+}
+.cross::after {
+  rotate: 90deg;
+}
+.cross.x {
+  rotate: 45deg;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Changing theme cross-fades the whole page (see ThemeService). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--medium);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
 }

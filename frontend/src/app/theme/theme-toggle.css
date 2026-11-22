@@ -1,0 +1,57 @@
+fieldset {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+label {
+  cursor: pointer;
+}
+
+span {
+  display: grid;
+  place-items: center;
+  min-height: var(--control-sm);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: color var(--fast);
+}
+label:hover span,
+input:checked + span {
+  color: var(--color-ink);
+}
+input:focus-visible + span {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* The underline of the chosen option; it slides from one to the next. */
+fieldset::after {
+  content: '';
+  position: absolute;
+  bottom: var(--space-1);
+  left: 0;
+  width: calc(100% / 3);
+  height: var(--stroke);
+  border-inline: var(--space-2) solid transparent;
+  background: var(--color-ink);
+  background-clip: padding-box;
+  transform: translateX(calc(var(--index) * 100%));
+  transition: transform var(--medium) var(--ease-swing);
+  pointer-events: none;
+}
+
+/* No pointer to be precise with: full touch targets. */
+@media (hover: none) {
+  span {
+    min-height: var(--control);
+  }
+  fieldset::after {
+    bottom: var(--space-2);
+  }
+}

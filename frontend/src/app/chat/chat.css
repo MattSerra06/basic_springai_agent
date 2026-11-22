@@ -1,220 +1,136 @@
+/* The page: the wooden panel on the left, the sheet of paper in the light on the right. */
 :host {
   display: grid;
-  grid-template-columns: 17rem minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 65% 55% at 100% 0%, var(--color-glow), transparent 70%), var(--color-bg);
+  transition: grid-template-columns var(--medium) var(--ease-out);
+}
+:host(.railed) {
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
 }
 
+/*
+ * One column for everything: the bar, the thread and the composer are equally wide.
+ * --inset is what is left on each side of it; it is measured on the conversation (cqw),
+ * so that the scrollbar of the thread does not make the thread narrower than the rest.
+ */
 .conversation {
+  --gutter: var(--space-6);
+  --inset: max(var(--gutter), calc((100cqw - var(--page-width)) / 2));
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
-  width: 100%;
-  max-width: 46rem;
-  margin: 0 auto;
-  padding: 0 1rem;
-  box-sizing: border-box;
 }
 
-.top {
+/* The top line, level with the head of the panel. Only what is not the conversation. */
+.bar {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 0 0.75rem;
-  border-bottom: 1px solid var(--line);
+  min-height: var(--bar);
+  margin-inline: var(--inset);
 }
-.top h1 {
-  margin: 0;
-  font-size: 1rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* The words of the toggle end on the right edge of the column. */
+.bar app-theme-toggle {
+  margin-left: auto;
+  margin-right: calc(-1 * var(--space-2));
 }
 .menu,
 .backdrop {
   display: none;
 }
 
-.thread {
+/* The title and the thread scroll together; the scrollbar lies in the right margin. */
+.scroll {
   flex: 1;
-  overflow-y: auto;
-  padding: 1.25rem 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  align-items: flex-start;
+  min-height: 0;
+  overflow: hidden auto;
+  padding-left: var(--inset);
 }
-.empty {
-  margin: auto;
-  color: var(--muted);
-}
-.problem {
-  margin: 0;
-  padding: 0.625rem 0.875rem;
-  border-radius: 0.75rem;
-  background: var(--danger-bg);
-  color: var(--danger);
+.scroll > * {
+  width: calc(100cqw - 2 * var(--inset));
 }
 
-.message {
-  flex-shrink: 0;
-  align-self: flex-start;
-  max-width: 85%;
-  padding: 0.625rem 0.875rem;
-  border-radius: 0.875rem;
-  background: var(--surface);
+/*
+ * The blank page: nothing to scroll, so the headline and the composer come together in
+ * the middle of the page, where the first message is written.
+ */
+.blank .bar,
+.blank .composer {
+  margin-bottom: auto;
 }
-.message.user {
-  align-self: flex-end;
-  background: var(--accent);
-  color: var(--on-accent);
+.blank .scroll {
+  flex: none;
+  overflow: visible;
 }
-/* The agent's reply reads as plain text on the page, not as a bubble. */
-.message.assistant {
-  max-width: 100%;
-  padding: 0;
-  background: none;
-}
-.message.error {
-  padding: 0.625rem 0.875rem;
-  background: var(--danger-bg);
-  color: var(--danger);
-}
-.message p {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  line-height: 1.5;
-}
-.who {
-  display: block;
-  margin-bottom: 0.125rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.65;
-}
-.message .note {
-  margin-top: 0.25rem;
-  font-size: 0.8125rem;
-  font-style: italic;
-  color: var(--muted);
-}
-
-.pending {
-  display: flex;
-  gap: 0.25rem;
-  padding: 0.375rem 0;
-}
-.pending i {
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.3;
-  animation: blink 1.2s infinite;
-}
-.pending i:nth-child(2) {
-  animation-delay: 0.2s;
-}
-.pending i:nth-child(3) {
-  animation-delay: 0.4s;
-}
-@keyframes blink {
-  40% {
-    opacity: 0.9;
-  }
-}
-
-.composer {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem 0 1.25rem;
-  border-top: 1px solid var(--line);
-}
-.entry {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.5rem;
-}
-textarea {
-  flex: 1;
-  box-sizing: border-box;
-  min-height: 2.75rem;
-  max-height: 12rem;
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 0.75rem;
-  background: var(--surface);
-  color: inherit;
-  font: inherit;
-  resize: none;
-  field-sizing: content;
-}
-textarea:focus-visible,
-button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.entry button {
-  height: 2.75rem;
-  padding: 0 1.125rem;
-  border: 0;
-  border-radius: 0.75rem;
-  background: var(--accent);
-  color: var(--on-accent);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-.entry button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-.entry button.stop {
-  background: transparent;
-  color: inherit;
-  box-shadow: inset 0 0 0 1px var(--line);
-}
-
-/* Narrow screens: the sidebar becomes a drawer opened from the header. */
+/* Narrow screens: the sidebar becomes a drawer opened from the bar. */
 @media (max-width: 48rem) {
   :host {
     grid-template-columns: minmax(0, 1fr);
   }
+  .conversation {
+    --gutter: var(--space-4);
+  }
   .sidebar {
     position: fixed;
     inset: 0 auto 0 0;
-    z-index: 2;
-    width: min(17rem, 85vw);
+    z-index: 3;
+    width: min(var(--sidebar-width), 85vw);
     transform: translateX(-100%);
-    transition: transform 0.2s;
+    transition: transform var(--medium) var(--ease-out);
   }
   .sidebar.open {
     transform: none;
+    box-shadow: var(--shadow-pop);
   }
   .backdrop {
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 1;
+    z-index: 2;
     border: 0;
-    background: rgb(0 0 0 / 0.4);
+    background: var(--color-scrim);
+    animation: dim var(--medium) backwards;
   }
+  /* The glyph of the first button starts on the left edge of the column. */
   .menu {
-    display: block;
-    width: 2.25rem;
-    height: 2.25rem;
-    border: 0;
-    border-radius: 0.5rem;
-    background: transparent;
-    color: inherit;
-    font-size: 1.125rem;
-    cursor: pointer;
+    flex: none;
+    display: inline-grid;
+  }
+  .menu:first-child {
+    margin-left: calc((var(--glyph) - var(--control)) / 2);
+  }
+  /* Two bars for the menu. */
+  .bars {
+    position: relative;
+    width: var(--glyph);
+    height: var(--glyph);
+  }
+  .bars::before,
+  .bars::after {
+    content: '';
+    position: absolute;
+    top: calc(50% - var(--stroke) / 2);
+    left: 0;
+    width: 100%;
+    height: var(--stroke);
+    background: currentColor;
+    translate: 0 calc(-1 * var(--space-1));
+  }
+  .bars::after {
+    translate: 0 var(--space-1);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .sidebar {
-    transition: none;
+@keyframes dim {
+  from {
+    opacity: 0;
   }
 }

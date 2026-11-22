@@ -1,0 +1,152 @@
+/* The entries of the menu of the model, and the submenu of the reasoning efforts. */
+.option {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-3);
+  width: 100%;
+  min-height: var(--control);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--fast);
+}
+.option:hover,
+.option:focus-visible,
+.more[aria-expanded='true'] {
+  background: var(--color-hover);
+}
+.option:focus-visible {
+  outline-offset: -2px;
+}
+
+.name {
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: var(--text-entry);
+  line-height: var(--leading-snug);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* What is chosen is marked as in the panel: an orange rule on its left, and italics. */
+.option::before {
+  content: '';
+  position: absolute;
+  inset: var(--space-2) auto var(--space-2) 0;
+  width: 3px;
+  background: var(--color-accent);
+  scale: 1 0;
+  transition: scale var(--medium) var(--ease-out);
+}
+[aria-checked='true']::before {
+  scale: 1;
+}
+[aria-checked='true'] .name {
+  font-style: italic;
+}
+
+/* The entry that opens the efforts, under a hairline: its label and value on a baseline. */
+.sub {
+  position: relative;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: var(--rule);
+}
+.more {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+}
+.more .name {
+  text-align: right;
+}
+.more[aria-expanded='true'] .chevron {
+  rotate: 180deg;
+}
+
+/* By default the efforts unfold inside the menu, under their entry. */
+.submenu {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows var(--medium) var(--ease-out),
+    visibility 0s var(--medium);
+}
+.submenu.open {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition:
+    grid-template-rows var(--medium) var(--ease-out),
+    visibility 0s;
+}
+.sheet {
+  min-height: 0;
+  overflow: hidden;
+}
+.sheet .option {
+  grid-template-columns: minmax(0, 1fr) var(--space-7);
+}
+/* How heavy the effort is among those on offer; orange for the one chosen. */
+.gauge {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--gauge, var(--color-ink-soft)) calc(var(--level) * 100%),
+    var(--color-rule) 0
+  );
+}
+[aria-checked='true'] .gauge {
+  --gauge: var(--color-accent);
+}
+
+/*
+ * Where the page leaves room beside the field (the conversation is the container), the
+ * efforts are a sheet of their own that opens to the right, as submenus do.
+ */
+@container (min-width: 70rem) {
+  .submenu {
+    position: absolute;
+    bottom: calc(-1 * var(--space-2) - 1px);
+    left: calc(100% + var(--space-4));
+    z-index: 2;
+    display: block;
+    width: var(--submenu-width);
+    padding: var(--space-2);
+    border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-lg);
+    background: var(--color-raised);
+    box-shadow: var(--shadow-pop);
+    opacity: 0;
+    scale: 0.94;
+    transform-origin: 0 100%;
+    translate: calc(-1 * var(--space-2)) 0;
+    transition:
+      opacity var(--fast),
+      scale var(--fast),
+      translate var(--fast),
+      visibility 0s var(--fast);
+  }
+  .submenu.open {
+    opacity: 1;
+    scale: 1;
+    translate: 0 0;
+    transition:
+      opacity var(--fast),
+      scale var(--medium) var(--ease-swing),
+      translate var(--medium) var(--ease-swing),
+      visibility 0s;
+  }
+  .sheet {
+    overflow: visible;
+  }
+  /* The chevron points where the sheet opens, and stays there. */
+  .more .chevron,
+  .more[aria-expanded='true'] .chevron {
+    rotate: -90deg;
+  }
+}

@@ -1,0 +1,123 @@
+/* The composer, under the thread, which fades out as it reaches it. */
+.composer {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  margin-inline: var(--inset);
+  padding-bottom: var(--space-5);
+}
+.composer::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 100%;
+  height: var(--space-6);
+  background: linear-gradient(transparent, var(--color-bg));
+  pointer-events: none;
+}
+.blank .composer::before {
+  display: none;
+}
+
+/*
+ * One field holds it all: the text, then the model and the arrow that sends. It is the
+ * brightest sheet on the page, edged and lifted, so that it cannot be missed.
+ */
+.field {
+  position: relative; /* the menu of the model opens against it */
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-field);
+  transition:
+    border-color var(--fast),
+    box-shadow var(--medium) var(--ease-out);
+}
+.field:has(textarea:focus-visible) {
+  border-color: var(--color-accent-text);
+  box-shadow:
+    0 0 0 1px var(--color-accent-text),
+    0 0 0 var(--space-2) var(--color-glow),
+    var(--shadow-field);
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  max-height: 14rem;
+  padding: var(--space-4) var(--space-5) var(--space-3);
+  border: 0;
+  outline: 0; /* the field shows the focus */
+  background: transparent;
+  line-height: var(--leading-text);
+  resize: none;
+  field-sizing: content;
+}
+/* On the blank page the field is the place to start: room for a few lines. */
+.blank textarea {
+  min-height: 6rem;
+}
+textarea::placeholder {
+  color: var(--color-ink-soft);
+  opacity: 1;
+}
+
+/* The model and the arrow that sends, at the end of the field. */
+.tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: 0 var(--space-2) var(--space-2);
+}
+
+/* The arrow that sends; a square that stops while the reply is being written. */
+.send {
+  position: relative;
+  flex: none;
+  border-radius: var(--radius-full);
+  animation: pop var(--medium) var(--ease-swing) backwards;
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+.send .icon {
+  transition: translate var(--medium) var(--ease-swing);
+}
+.send:hover:enabled .icon {
+  translate: 0 calc(var(--space-1) / -2);
+}
+
+.stop span {
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: currentColor;
+}
+/* A ring that breathes around it: the agent is at work. */
+.stop::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--color-accent);
+  border-radius: inherit;
+  animation: breathe 1.6s var(--ease-out) infinite;
+  pointer-events: none;
+}
+@keyframes breathe {
+  to {
+    opacity: 0;
+    scale: 1.55;
+  }
+}
+
+@media (max-width: 48rem) {
+  .composer {
+    padding-bottom: var(--space-4);
+  }
+  textarea {
+    padding-inline: var(--space-4);
+  }
+}

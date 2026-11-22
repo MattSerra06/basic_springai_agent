@@ -13,7 +13,8 @@ Monorepo d'un agent conversationnel en streaming :
   ouverte le temps que le modèle travaille, et une réponse continue même si on recharge
   la page ou qu'on change de conversation.
 - **Choix du modèle et du raisonnement** : chaque message part avec le modèle choisi dans
-  la liste (GPT-6.2 Sol ou Astra) et le niveau de raisonnement réglé au curseur. Les
+  le menu du champ de saisie (GPT-6.2 Sol ou Astra) et le niveau de raisonnement pris
+  dans son sous-menu. Les
   choix proposés viennent de la configuration du backend.
 - **Sessions** (Spring AI Session) : chaque conversation est une session dont l'historique
   est stocké dans une base H2 locale et renvoyé au modèle à chaque tour. Les conversations
@@ -77,7 +78,7 @@ Tout est dans `backend/src/main/resources/application.yaml` :
 | `spring.ai.openai.chat.api` | `responses` : l'API Responses d'OpenAI plutôt que Chat Completions |
 | `spring.ai.openai.responses.model` | Modèle utilisé quand aucun n'est choisi par message : les résumés de compaction |
 | `agent.models` | Modèles proposés dans l'UI (`id` envoyé à OpenAI, `label` affiché) ; le premier est le modèle par défaut |
-| `agent.reasoning.efforts` | Niveaux de raisonnement du curseur, du plus léger au plus lourd (`reasoning.effort`) |
+| `agent.reasoning.efforts` | Niveaux de raisonnement proposés, du plus léger au plus lourd (`reasoning.effort`) |
 | `agent.reasoning.default-effort` | Niveau utilisé par défaut |
 | `spring.ai.openai.decision.model` | Modèle du `DecisionModel` fourni par le starter (API Decisions d'OpenAI) |
 | `server.address` | Interface d'écoute : `127.0.0.1`, voir « Sécurité » |

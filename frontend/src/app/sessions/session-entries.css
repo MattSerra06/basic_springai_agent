@@ -1,0 +1,124 @@
+/* The previous conversations, set like the contents page of a magazine. */
+nav {
+  flex: 1;
+  overflow-y: auto;
+  counter-reset: entry;
+}
+.none {
+  margin: var(--space-4) 0;
+  text-transform: none;
+}
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-bottom: var(--rule);
+  counter-increment: entry;
+  transition: background var(--fast);
+  animation: arrive var(--slow) var(--ease-out) backwards;
+  animation-delay: calc(min(var(--i), 12) * 35ms);
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    translate: calc(-1 * var(--space-3)) 0;
+  }
+}
+.item:hover {
+  background: var(--color-hover);
+}
+/* The open conversation: a lit entry, and an orange rule that grows along it. */
+.item.active {
+  background: var(--color-selected);
+}
+.item::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--color-accent);
+  scale: 1 0;
+  transition: scale var(--medium) var(--ease-out);
+}
+.item.active::before {
+  scale: 1;
+}
+
+/* The number, the title and the date share one left edge with the button above. */
+.item a {
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--space-6) minmax(0, 1fr);
+  align-items: baseline;
+  min-width: 0;
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4);
+  color: var(--color-ink-soft);
+  text-decoration: none;
+}
+.item a::before {
+  content: counter(entry, decimal-leading-zero);
+  font: var(--type-label);
+  letter-spacing: var(--tracking-caps);
+}
+.title {
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: var(--text-entry);
+  line-height: var(--leading-snug);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--fast);
+}
+/* The others stay quiet, so that the page is what is read. */
+.item:hover .title,
+.active .title {
+  color: var(--color-ink);
+}
+.active .title {
+  font-style: italic;
+}
+time {
+  grid-column: 2;
+}
+
+/* The button to delete lies over the end of the entry, which makes room for it. */
+.item:hover a,
+.item:focus-within a,
+.active a {
+  padding-right: calc(var(--control-sm) + var(--space-2));
+}
+.delete {
+  position: absolute;
+  right: var(--space-1);
+  color: var(--color-ink-soft);
+  opacity: 0;
+  transition:
+    opacity var(--fast),
+    color var(--fast),
+    background var(--fast);
+}
+.item:hover .delete,
+.item:focus-within .delete,
+.active .delete {
+  opacity: 1;
+}
+.delete:hover {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+/* No hover on touch screens: keep the button visible, at its full size. */
+@media (hover: none) {
+  .item a {
+    padding-right: calc(var(--control) + var(--space-1));
+  }
+  .delete {
+    right: 0;
+    opacity: 1;
+  }
+}
+
+.item a:focus-visible,
+.delete:focus-visible {
+  outline-offset: -2px;
+}

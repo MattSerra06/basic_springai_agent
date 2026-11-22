@@ -19,53 +19,88 @@ function render(model: string, reasoningEffort: string) {
   fixture.componentRef.setInput('reasoningEffort', reasoningEffort);
   fixture.detectChanges();
   const element: HTMLElement = fixture.nativeElement;
+  const [menu, efforts] = element.querySelectorAll<HTMLElement>('[role=menu]');
+  const radios = (of: HTMLElement) =>
+    [...of.querySelectorAll<HTMLElement>('[role=menuitemradio]')].filter(
+      (item) => item.closest('[role=menu]') === of,
+    );
   return {
     fixture,
-    select: element.querySelector('select')!,
-    slider: element.querySelector<HTMLInputElement>('input[type=range]')!,
-    output: element.querySelector('output')!,
+    trigger: element.querySelector<HTMLElement>('.trigger')!,
+    menu,
+    efforts,
+    models: radios(menu),
+    effortItem: menu.querySelector<HTMLElement>('[role=menuitem]')!,
+    effortChoices: radios(efforts),
   };
 }
 
-describe('RunSettingsBar', () => {
-  it('shows the models on offer with the chosen one selected', () => {
-    const { select } = render('gpt-6.2-astra', 'medium');
+const name = (item: HTMLElement) => item.querySelector('.name')!.textContent;
+const checked = (items: HTMLElement[]) =>
+  items.filter((item) => item.getAttribute('aria-checked') === 'true').map(name);
 
-    expect([...select.options].map((option) => option.textContent)).toEqual([
-      'GPT-6.2 Sol',
-      'GPT-6.2 Astra',
-    ]);
-    expect(select.value).toBe('gpt-6.2-astra');
+describe('RunSettingsBar', () => {
+  it('names the chosen model and effort on its button', () => {
+    const { trigger } = render('gpt-6.2-astra', 'high');
+
+    expect(trigger.querySelector('.model')!.textContent).toBe('GPT-6.2 Astra');
+    expect(trigger.querySelector('.effort')!.textContent).toBe('Élevé');
+  });
+
+  it('shows the models on offer with the chosen one checked', () => {
+    const { models } = render('gpt-6.2-astra', 'medium');
+
+    expect(models.map(name)).toEqual(['GPT-6.2 Sol', 'GPT-6.2 Astra']);
+    expect(checked(models)).toEqual(['GPT-6.2 Astra']);
   });
 
   it('emits the model that is picked', () => {
-    const { fixture, select } = render('gpt-6.2-sol', 'medium');
+    const { fixture, models } = render('gpt-6.2-sol', 'medium');
     const picked: string[] = [];
     fixture.componentInstance.modelChange.subscribe((model) => picked.push(model));
 
-    select.value = 'gpt-6.2-astra';
-    select.dispatchEvent(new Event('change'));
+    models[1].click();
 
     expect(picked).toEqual(['gpt-6.2-astra']);
   });
 
-  it('puts the slider on the chosen effort and names it', () => {
-    const { slider, output } = render('gpt-6.2-sol', 'high');
+  it('lists the efforts in a submenu, the chosen one checked and named on its entry', () => {
+    const { effortItem, effortChoices } = render('gpt-6.2-sol', 'high');
 
-    expect(slider.max).toBe('3');
-    expect(slider.value).toBe('2');
-    expect(output.textContent).toBe('Élevé');
-    expect(slider.getAttribute('aria-valuetext')).toBe('Élevé');
+    expect(effortChoices.map(name)).toEqual(['Faible', 'Moyen', 'Élevé', 'Très élevé']);
+    expect(checked(effortChoices)).toEqual(['Élevé']);
+    expect(name(effortItem)).toBe('Élevé');
   });
 
-  it('emits the effort the slider is moved to', () => {
-    const { fixture, slider } = render('gpt-6.2-sol', 'medium');
+  it('emits the effort that is picked and closes the submenu', () => {
+    const { fixture, effortItem, effortChoices } = render('gpt-6.2-sol', 'medium');
     const picked: string[] = [];
     fixture.componentInstance.reasoningEffortChange.subscribe((effort) => picked.push(effort));
 
-    slider.value = '3';
-    slider.dispatchEvent(new Event('input'));
+    effortItem.click();
+    fixture.detectChanges();
+    expect(effortItem.getAttribute('aria-expanded')).toBe('true');
+
+    effortChoices[3].click();
+    fixture.detectChanges();
 
     expect(picked).toEqual(['xhigh']);
+    expect(effortItem.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('opens its menu from the button and closes it on Escape, out of reach meanwhile', () => {
+    const { fixture, trigger, menu, models } = render('gpt-6.2-sol', 'medium');
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(menu.hasAttribute('inert')).toBe(true);
+
+    trigger.click();
+    fixture.detectChanges();
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(menu.hasAttribute('inert')).toBe(false);
+
+    models[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(menu.hasAttribute('inert')).toBe(true);
   });
 });

@@ -1,26 +1,59 @@
-<a class="new" routerLink="/">+ Nouvelle conversation</a>
+<header class="head">
+  <p class="brand">Agent<span aria-hidden="true">.</span></p>
+  <button
+    type="button"
+    class="btn btn-ghost fold"
+    [attr.aria-expanded]="!collapsed()"
+    [attr.aria-label]="collapsed() ? 'Déplier le menu' : 'Replier le menu'"
+    [title]="collapsed() ? 'Déplier le menu' : 'Replier le menu'"
+    (click)="toggle.emit()"
+  >
+    <svg class="icon" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+      <rect x="2.5" y="3.5" width="15" height="13" rx="2" />
+      <path d="M7.5 3.5v13" />
+      <path class="arrow" d="M13.5 8l-2 2 2 2" />
+    </svg>
+  </button>
+</header>
 
-<nav aria-label="Conversations précédentes">
-  @for (session of sessions(); track session.id) {
-    <div class="item" [class.active]="session.id === activeId()">
-      <a
-        [routerLink]="['/c', session.id]"
-        [attr.aria-current]="session.id === activeId() ? 'page' : null"
-      >
-        <span class="title">{{ session.title }}</span>
-        <time [attr.datetime]="session.createdAt">{{
-          session.createdAt | date: 'd MMM, HH:mm'
-        }}</time>
-      </a>
-      <button
-        type="button"
-        [attr.aria-label]="'Supprimer « ' + session.title + ' »'"
-        (click)="confirmRemove(session)"
-      >
-        ×
-      </button>
-    </div>
-  } @empty {
-    <p class="none">Aucune conversation pour l'instant.</p>
-  }
-</nav>
+<a
+  class="btn btn-ink new"
+  routerLink="/"
+  aria-label="Nouvelle conversation"
+  title="Nouvelle conversation"
+>
+  <span class="label kicker">Nouvelle conversation</span>
+  <span class="plus"><span class="cross" aria-hidden="true"></span></span>
+</a>
+
+<div class="contents">
+  <p class="heading kicker" aria-hidden="true">
+    Sommaire <span>{{ sessions().length | number: '2.0-0' }}</span>
+  </p>
+
+  <nav aria-label="Conversations précédentes">
+    @for (session of sessions(); track session.id) {
+      <div class="item" [class.active]="session.id === activeId()" [style.--i]="$index">
+        <a
+          [routerLink]="['/c', session.id]"
+          [attr.aria-current]="session.id === activeId() ? 'page' : null"
+        >
+          <span class="title">{{ session.title }}</span>
+          <time class="kicker" [attr.datetime]="session.createdAt">{{
+            session.createdAt | date: 'd MMM, HH:mm'
+          }}</time>
+        </a>
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm delete"
+          [attr.aria-label]="'Supprimer « ' + session.title + ' »'"
+          (click)="confirmRemove(session)"
+        >
+          <span class="cross x" aria-hidden="true"></span>
+        </button>
+      </div>
+    } @empty {
+      <p class="none kicker">Aucune conversation pour l'instant.</p>
+    }
+  </nav>
+</div>

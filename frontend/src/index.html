@@ -5,7 +5,19 @@
     <title>Agent</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- The record. The query string makes browsers drop the icon they kept from before. -->
+    <link rel="icon" href="favicon.ico?v=3" sizes="32x32" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3" />
+    <script>
+      // The theme chosen by hand, applied before the first paint (see ThemeService).
+      try {
+        const theme = localStorage.getItem('agent.theme');
+        if (theme === 'light' || theme === 'dark') {
+          document.documentElement.setAttribute('data-theme', theme);
+        }
+      } catch {}
+    </script>
   </head>
   <body>
     <app-root></app-root>

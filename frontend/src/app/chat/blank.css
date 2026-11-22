@@ -1,0 +1,73 @@
+/*
+ * The blank page: a headline, and a record half out of its sleeve — the sleeve being the
+ * field of the composer, just below, which the record slips behind.
+ */
+.blank .thread {
+  padding-block: 0 var(--space-6);
+}
+.empty {
+  position: relative;
+  animation: rise var(--slow) var(--ease-out) backwards;
+}
+.headline {
+  position: relative;
+  max-width: 9em;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-hero);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-display);
+  text-wrap: balance;
+}
+/* The record itself does not turn: the light on it stays where the window is. */
+.disc {
+  position: absolute;
+  right: var(--space-5);
+  bottom: 0;
+  width: clamp(9rem, 36%, 20rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    conic-gradient(
+      from 25deg,
+      transparent 0 6%,
+      var(--color-sheen) 11%,
+      transparent 17% 56%,
+      var(--color-sheen) 61%,
+      transparent 67%
+    ),
+    linear-gradient(140deg, var(--color-sun), var(--color-sun-deep));
+  box-shadow: var(--shadow-field);
+  translate: 0 42%;
+  animation: slip 1.2s var(--ease-out) backwards;
+}
+@keyframes slip {
+  from {
+    translate: 0 85%;
+  }
+}
+/* What turns, at 33⅓ rpm: the grooves and the label, with its two lines of print. */
+.disc::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle closest-side, var(--color-bg) 0 3.5%, transparent 4.5%),
+    linear-gradient(var(--color-sun), var(--color-sun)) 50% 39% / 15% 1.2% no-repeat,
+    linear-gradient(var(--color-sun), var(--color-sun)) 50% 42.5% / 9% 1.2% no-repeat,
+    radial-gradient(circle closest-side, var(--color-sun-deep) 0 33%, transparent 34%),
+    repeating-radial-gradient(circle closest-side, transparent 0 2.4%, var(--color-rule) 2.4% 2.9%);
+  animation: spin 1.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    rotate: 1turn;
+  }
+}
+
+@media (max-width: 48rem) {
+  .disc {
+    right: var(--space-2);
+  }
+}
