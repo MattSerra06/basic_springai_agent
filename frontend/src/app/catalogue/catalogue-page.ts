@@ -15,29 +15,37 @@ import { ThemeToggle } from '../theme/theme-toggle';
   selector: 'app-catalogue',
   styleUrl: './catalogue-page.css',
   template: `<header class="bar">
-      <a class="btn btn-ghost" routerLink="/">← Conversations</a>
+      <a class="back" routerLink="/">← Conversations</a>
       <app-theme-toggle />
     </header>
     <main>
-      <p class="kicker">Interface générée</p>
-      <h1>Catalogue des composants</h1>
-      <p class="intro">
-        Ce que l'agent peut afficher dans une réponse. Chaque exemple est dessiné à partir du
-        programme OpenUI Lang qu'écrirait le modèle.
-      </p>
+      <div class="intro">
+        <h1>Ce que l'agent sait afficher</h1>
+        <p>
+          Chaque exemple est dessiné à partir du programme qu'écrirait le modèle. Les
+          mini-applications fonctionnent ici même : cliquez.
+        </p>
+        <nav aria-label="Exemples">
+          @for (sample of samples; track sample.title) {
+            <a [href]="'catalogue#' + anchor($index)" (click)="go($event, $index)">{{
+              sample.title
+            }}</a>
+          }
+        </nav>
+      </div>
       @if (sent(); as message) {
         <p class="sent" role="status">
-          <span class="kicker">Message qu'un clic enverrait</span>
+          <span>Message qu'un clic enverrait à l'agent</span>
           {{ message }}
         </p>
       }
       @for (sample of samples; track sample.title) {
-        <section>
+        <section [id]="anchor($index)">
           <h2>{{ sample.title }}</h2>
           <p class="about">{{ sample.about }}</p>
           <app-generated-ui [program]="sample.program" (send)="sent.set($event)" />
           <details>
-            <summary class="kicker">Voir le programme</summary>
+            <summary>Voir le programme</summary>
             <pre tabindex="0"><code>{{ sample.program }}</code></pre>
           </details>
         </section>
@@ -48,4 +56,14 @@ export class CataloguePage {
   protected readonly samples = samples;
   /** On this page a click sends nothing: it shows what would be sent. */
   protected readonly sent = signal<string | null>(null);
+
+  protected anchor(index: number): string {
+    return `exemple-${index + 1}`;
+  }
+
+  /** The page scrolls inside itself: a plain anchor would not move it. */
+  protected go(event: Event, index: number): void {
+    event.preventDefault();
+    document.getElementById(this.anchor(index))?.scrollIntoView({ behavior: 'smooth' });
+  }
 }

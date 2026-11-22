@@ -12,6 +12,113 @@ export interface Sample {
 
 export const samples: Sample[] = [
   {
+    title: 'Calculatrice',
+    about: 'Une mini-application : son état vit dans le navigateur, les touches le modifient.',
+    program: `root = Response([calc])
+$cur = 0
+$acc = 0
+$op = ""
+res = $op == "+" ? $acc + $cur : $op == "-" ? $acc - $cur : $op == "×" ? $acc * $cur : $op == "÷" ? $acc / $cur : $cur
+calc = Panel([screen, keys], "Calculatrice")
+screen = Display($cur, $op == "" ? "" : "" + $acc + " " + $op)
+keys = Grid([k7, k8, k9, kdiv, k4, k5, k6, kmul, k1, k2, k3, ksub, kc, k0, keq, kadd], 4, "s")
+k7 = Button("7", Action([@Set($cur, $cur * 10 + 7)]), "secondary")
+k8 = Button("8", Action([@Set($cur, $cur * 10 + 8)]), "secondary")
+k9 = Button("9", Action([@Set($cur, $cur * 10 + 9)]), "secondary")
+k4 = Button("4", Action([@Set($cur, $cur * 10 + 4)]), "secondary")
+k5 = Button("5", Action([@Set($cur, $cur * 10 + 5)]), "secondary")
+k6 = Button("6", Action([@Set($cur, $cur * 10 + 6)]), "secondary")
+k1 = Button("1", Action([@Set($cur, $cur * 10 + 1)]), "secondary")
+k2 = Button("2", Action([@Set($cur, $cur * 10 + 2)]), "secondary")
+k3 = Button("3", Action([@Set($cur, $cur * 10 + 3)]), "secondary")
+k0 = Button("0", Action([@Set($cur, $cur * 10)]), "secondary")
+kadd = Button("+", Action([@Set($acc, res), @Set($op, "+"), @Set($cur, 0)]), "ghost")
+ksub = Button("-", Action([@Set($acc, res), @Set($op, "-"), @Set($cur, 0)]), "ghost")
+kmul = Button("×", Action([@Set($acc, res), @Set($op, "×"), @Set($cur, 0)]), "ghost")
+kdiv = Button("÷", Action([@Set($acc, res), @Set($op, "÷"), @Set($cur, 0)]), "ghost")
+keq = Button("=", Action([@Set($cur, res), @Set($op, ""), @Set($acc, 0)]), "primary")
+kc = Button("C", Action([@Reset($cur, $acc, $op)]), "danger")`,
+  },
+  {
+    title: 'Drum pad',
+    about: 'Des touches qui sonnent et un compteur de frappes.',
+    program: `root = Response([pad])
+$hits = 0
+$last = "—"
+pad = Panel([head, pads, reset], "Drum pad")
+head = Grid([Display($hits, "Frappes"), Display($last, "Dernier son")], 2)
+pads = Grid([p1, p2, p3, p4, p5, p6], 3)
+p1 = Button("Kick", Action([@Set($hits, $hits + 1), @Set($last, "Kick")]), "secondary", "l", "kick")
+p2 = Button("Snare", Action([@Set($hits, $hits + 1), @Set($last, "Snare")]), "secondary", "l", "snare")
+p3 = Button("Hi-hat", Action([@Set($hits, $hits + 1), @Set($last, "Hi-hat")]), "secondary", "l", "hat")
+p4 = Button("Clap", Action([@Set($hits, $hits + 1), @Set($last, "Clap")]), "ghost", "l", "clap")
+p5 = Button("Tom", Action([@Set($hits, $hits + 1), @Set($last, "Tom")]), "ghost", "l", "tom")
+p6 = Button("Bip", Action([@Set($hits, $hits + 1), @Set($last, "Bip")]), "ghost", "l", "beep")
+reset = Buttons([Button("Remettre à zéro", Action([@Reset($hits, $last)]), "danger", "s")])`,
+  },
+  {
+    title: 'Minuteur',
+    about: 'Un pomodoro : le temps passe dans le navigateur, la fin d’une phase lance la suivante.',
+    program: `root = Response([app])
+$phase = "Travail"
+$rounds = 0
+app = Panel([mode, $phase == "Travail" ? work : rest, bar], "Pomodoro")
+mode = Chips("phase", ["Travail", "Pause"], $phase)
+work = Timer(1500, "Concentration", false, Action([@Set($rounds, $rounds + 1), @Set($phase, "Pause")]))
+rest = Timer(300, "Pause", false, Action([@Set($phase, "Travail")]))
+bar = Progress($rounds, 4, "Sessions terminées : " + $rounds + " sur 4")`,
+  },
+  {
+    title: 'Convertisseur',
+    about: 'Des champs reliés à des variables : le résultat se recalcule à chaque frappe.',
+    program: `root = Response([app])
+$bill = 80
+$tip = 15
+$people = 2
+$round = false
+total = $bill * (1 + $tip / 100)
+part = total / $people
+app = Panel([fields, opts, out], "Partager l'addition")
+fields = Grid([f1, f2, f3], 3)
+f1 = FormControl("Addition (€)", Input("bill", "0", "number", null, $bill))
+f2 = FormControl("Pourboire", Slider("tip", 0, 30, 1, 15, "%", $tip))
+f3 = FormControl("Convives", Input("people", "1", "number", null, $people))
+opts = Switch("round", "Arrondir à l'euro supérieur", $round)
+out = Grid([Display(@Round(total, 2), "Total (€)"), $people > 1 ? Display($round ? @Ceil(part) : @Round(part, 2), "Par personne (€)") : null], 2)`,
+  },
+  {
+    title: 'Lieux et carte',
+    about: 'Une liste et une carte qui se répondent : un clic sur un lieu centre la carte dessus.',
+    program: `root = Response([app])
+$sel = 1
+$filtre = "Tous"
+app = Panel([filter, Stack([list, map], "row")], "Cafés autour du Vieux-Port")
+filter = Chips("filtre", ["Tous", "Terrasse", "Wifi"], $filtre)
+list = List([$filtre != "Wifi" ? c1 : null, c2, $filtre != "Terrasse" ? c3 : null])
+c1 = ListItem("Café de l'Abbaye", "Terrasse, vue sur le port", Action([@Set($sel, 1)]))
+c2 = ListItem("Deep Coffee", "Terrasse et wifi, torréfacteur", Action([@Set($sel, 2)]))
+c3 = ListItem("Le Comptoir Dugommier", "Wifi, grande salle", Action([@Set($sel, 3)]))
+map = Map([m1, m2, m3], null, false, $sel)
+m1 = Marker("Café de l'Abbaye", 43.2903, 5.3652, "Terrasse, vue sur le port")
+m2 = Marker("Deep Coffee", 43.2946, 5.3745, "Terrasse et wifi")
+m3 = Marker("Le Comptoir Dugommier", 43.3005, 5.3828, "Wifi, grande salle")`,
+  },
+  {
+    title: 'Liste à cocher',
+    about: 'Une liste que l’on coche, complète et vide soi-même.',
+    program: `root = Response([todo])
+todo = Checklist(["Réserver le train", "Prévenir le voisin pour les plantes", "Charger la liseuse"], "Avant le départ", true)`,
+  },
+  {
+    title: 'Mises en page',
+    about: 'Des panneaux, des colonnes et des rangées qui s’emboîtent.',
+    program: `root = Response([dash])
+dash = Panel([top, Grid([left, right], 2), Stack([Tags(["Mis à jour ce matin"]), Buttons([Button("Actualiser", Action([@ToAssistant("Actualise ce tableau de bord")]), "secondary", "s")])], "row", "m", "center", "between")], "Vol AF 1284 · Paris → Lisbonne")
+top = Metrics([{label: "Départ", value: "14:05", detail: "à l'heure", trend: "up"}, {label: "Arrivée", value: "15:40", detail: "heure locale"}, {label: "Porte", value: "K42"}])
+left = Panel([Progress(62, 100, "Trajet parcouru"), KeyValues([{label: "Altitude", value: "11 300 m"}, {label: "Vitesse", value: "840 km/h"}])], "En vol")
+right = Panel([Timeline([{when: "14:05", title: "Décollage de Paris"}, {when: "15:10", title: "Début de descente"}, {when: "15:40", title: "Atterrissage"}])], "Étapes")`,
+  },
+  {
     title: 'Texte',
     about: 'La prose, les titres, les encadrés, les citations et le code.',
     program: `root = Response([lead, body, h, note, warn, quote, sep, code])

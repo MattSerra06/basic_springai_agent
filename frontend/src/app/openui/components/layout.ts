@@ -149,6 +149,86 @@ export class Accordion extends Block<{ items: unknown }> {
   );
 }
 
+interface StackProps {
+  children: unknown;
+  direction: 'column' | 'row';
+  gap: 's' | 'm' | 'l';
+  align: string;
+  justify: string;
+  wrap: boolean;
+}
+
+@Component({
+  changeDetection: OnPush,
+  imports: [RenderNode],
+  selector: 'gui-stack',
+  template: `<div
+    class="gui-stack"
+    [class]="classes()"
+    [style.align-items]="flex(p.align)"
+    [style.justify-content]="flex(p.justify)"
+  >
+    <openui-render-node [value]="p.children" [library]="ui.library" [context]="ui" />
+  </div>`,
+})
+export class Stack extends Block<StackProps> {
+  protected readonly classes = computed(() => {
+    const props = this.props() ?? {};
+    const row = props.direction === 'row';
+    return [
+      row ? 'gui-stack-row' : 'gui-stack-column',
+      `gui-gap-${props.gap ?? 'm'}`,
+      row && props.wrap === false ? 'gui-stack-scroll' : '',
+    ].join(' ');
+  });
+
+  /** "start", "between"… as CSS names them; nothing for the default. */
+  protected flex(value: string | undefined): string | null {
+    const names: Record<string, string> = {
+      start: 'flex-start',
+      end: 'flex-end',
+      center: 'center',
+      stretch: 'stretch',
+      between: 'space-between',
+    };
+    return names[value ?? ''] ?? null;
+  }
+}
+
+@Component({
+  changeDetection: OnPush,
+  imports: [RenderNode],
+  selector: 'gui-grid',
+  template: `<div
+    class="gui-cols"
+    [class]="'gui-gap-' + (p.gap ?? 'm')"
+    [class.gui-cols-wide]="columns() > 4"
+    [style.--columns]="columns()"
+  >
+    <openui-render-node [value]="p.children" [library]="ui.library" [context]="ui" />
+  </div>`,
+})
+export class Grid extends Block<{ children: unknown; columns: number; gap: string }> {
+  protected readonly columns = computed(() =>
+    Math.min(12, Math.max(1, Math.round(Number(this.props()?.columns) || 2))),
+  );
+}
+
+@Component({
+  changeDetection: OnPush,
+  imports: [RenderNode],
+  selector: 'gui-panel',
+  template: `<section class="gui-panel">
+    @if (p.title) {
+      <h3 class="gui-panel-title">{{ p.title }}</h3>
+    }
+    <div class="gui">
+      <openui-render-node [value]="p.children" [library]="ui.library" [context]="ui" />
+    </div>
+  </section>`,
+})
+export class Panel extends Block<{ children: unknown; title: string }> {}
+
 /** For the components a parent draws itself from their arguments: Series, Tab, Step… */
 @Component({ changeDetection: OnPush, selector: 'gui-part', template: '' })
 export class Part extends Block<object> {}

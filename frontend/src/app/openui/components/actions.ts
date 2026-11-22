@@ -3,13 +3,16 @@ import { RenderNode } from '@openuidev/angular-lang';
 import { Block, ElementNode, childProps, safeUrl, sendsMessage, strings } from '../block';
 import { InlineText } from '../inline';
 import { FormScope } from './forms';
+import { play } from './sound';
 
 const OnPush = ChangeDetectionStrategy.OnPush;
 
 interface ButtonProps {
   label: string;
   action: unknown;
-  variant: 'primary' | 'secondary';
+  variant: 'primary' | 'secondary' | 'ghost' | 'danger';
+  size: 's' | 'm' | 'l';
+  sound: string;
 }
 
 @Component({
@@ -19,8 +22,8 @@ interface ButtonProps {
   template: `<button
     type="button"
     class="gui-btn"
-    [class.gui-btn-secondary]="p.variant === 'secondary'"
-    [disabled]="host.busy() || ui.isStreaming"
+    [class]="'gui-btn-' + (p.variant ?? 'primary') + ' gui-btn-' + (p.size ?? 'm')"
+    [disabled]="blocked(p.action)"
     (click)="click()"
   >
     {{ p.label }}
@@ -33,6 +36,9 @@ export class Button extends Block<ButtonProps> {
     // In a form, a button that sends a message sends the values with it: they must be valid.
     if (this.form && sendsMessage(this.p.action) && !this.form.validate()) {
       return;
+    }
+    if (this.p.sound && !this.blocked(this.p.action)) {
+      play(this.p.sound);
     }
     this.act(this.p.label ?? '', this.p.action);
   }

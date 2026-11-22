@@ -12,7 +12,7 @@
  * Arguments are positional, in the order of the keys: required ones first, and new
  * ones only ever at the end, or stored conversations stop rendering.
  */
-import { tagSchemaId } from '@openuidev/lang-core';
+import { markReactive, tagSchemaId } from '@openuidev/lang-core';
 import { z } from 'zod/v4';
 import type { $ZodType } from 'zod/v4/core';
 
@@ -37,9 +37,25 @@ export interface ComponentGroup {
 
 export const ROOT = 'Response';
 
-/** `Action([@ToAssistant("…")])`, `Action([@OpenUrl("…")])`. */
+/** `Action([@ToAssistant("…")])`, `Action([@OpenUrl("…")])`, `Action([@Set($n, $n + 1)])`. */
 const action = z.any();
 tagSchemaId(action, 'ActionExpression');
+
+/**
+ * A slot for any component that stands on its own. It is not checked against a list, so
+ * that containers nest freely; a name that is not in the catalogue is still left out.
+ */
+const block = z.any();
+tagSchemaId(block, 'Block');
+
+/**
+ * An argument that takes a `$variable` and writes back to it: what is typed in the
+ * field becomes the value of the variable, for every expression that reads it.
+ */
+function bound<S extends $ZodType>(schema: S): S {
+  markReactive(schema);
+  return schema;
+}
 
 const tone = z.enum(['info', 'success', 'warning', 'danger']);
 
@@ -190,8 +206,13 @@ export function buildCatalogue<T extends Defined>(define: (definition: Definitio
   );
   const Map = add(
     'Map',
-    'An interactive map with numbered pins: places, an itinerary, where things are. connect draws the route from pin to pin, in order.',
-    { markers: z.array(Marker.ref), title: z.string().optional(), connect: z.boolean().optional() },
+    'An interactive map with numbered pins: places, an itinerary, where things are. connect draws the route from pin to pin, in order. focus is the number of the pin to centre on and open (1 for the first), usually a $variable set by a click elsewhere.',
+    {
+      markers: z.array(Marker.ref),
+      title: z.string().optional(),
+      connect: z.boolean().optional(),
+      focus: z.number().optional(),
+    },
   );
 
   // Lists
@@ -215,11 +236,13 @@ export function buildCatalogue<T extends Defined>(define: (definition: Definitio
   // Actions
   const Button = add(
     'Button',
-    'A button. Without an action it sends its label as the next user message. Exactly one button of a group is "primary".',
+    'A button. Without an action it sends its label as the next user message; with @Set it changes $variables in the browser. At most one button of a group is "primary"; "ghost" is quiet, "danger" resets or deletes. sound plays a short drum or beep on click.',
     {
       label: z.string(),
       action: action.optional(),
-      variant: z.enum(['primary', 'secondary']).optional(),
+      variant: z.enum(['primary', 'secondary', 'ghost', 'danger']).optional(),
+      size: z.enum(['s', 'm', 'l']).optional(),
+      sound: z.enum(['kick', 'snare', 'hat', 'clap', 'tom', 'beep']).optional(),
     },
   );
   const Buttons = add('Buttons', 'A row of buttons.', { buttons: z.array(Button.ref) });
@@ -253,12 +276,14 @@ export function buildCatalogue<T extends Defined>(define: (definition: Definitio
     placeholder: z.string().optional(),
     type: z.enum(['text', 'email', 'number', 'url']).optional(),
     rules,
+    value: bound(z.union([z.string(), z.number()]).optional()),
   });
   const TextArea = add('TextArea', 'A field for several lines.', {
     name: z.string(),
     placeholder: z.string().optional(),
     rows: z.number().optional(),
     rules,
+    value: bound(z.string().optional()),
   });
   const SelectItem = add('SelectItem', 'An option of a Select.', {
     value: z.string(),
@@ -269,6 +294,7 @@ export function buildCatalogue<T extends Defined>(define: (definition: Definitio
     items: z.array(SelectItem.ref),
     placeholder: z.string().optional(),
     rules,
+    value: bound(z.string().optional()),
   });
   const RadioItem = add('RadioItem', 'An option of a RadioGroup.', {
     value: z.string(),
@@ -280,6 +306,7 @@ export function buildCatalogue<T extends Defined>(define: (definition: Definitio
     items: z.array(RadioItem.ref),
     defaultValue: z.string().optional(),
     rules,
+    value: bound(z.string().optional()),
   });
   const CheckBoxItem = add('CheckBoxItem', 'A box of a CheckBoxGroup.', {
     value: z.string(),
@@ -298,11 +325,36 @@ export function buildCatalogue<T extends Defined>(define: (definition: Definitio
     step: z.number().optional(),
     defaultValue: z.number().optional(),
     unit: z.string().optional(),
+    value: bound(z.number().optional()),
   });
-  const DatePicker = add('DatePicker', 'A date.', { name: z.string(), rules });
+  const DatePicker = add('DatePicker', 'A date, as YYYY-MM-DD.', {
+    name: z.string(),
+    rules,
+    value: bound(z.string().optional()),
+  });
+  const Switch = add('Switch', 'An on/off setting.', {
+    name: z.string(),
+    label: z.string(),
+    value: bound(z.boolean().optional()),
+  });
+  const Chips = add(
+    'Chips',
+    'One choice among a few short options, as pills: a filter, a mode, a category. The value is the text of the chosen option.',
+    { name: z.string(), options: z.array(z.string()), value: bound(z.string().optional()) },
+  );
   const FormControl = add('FormControl', 'A labelled field of a Form.', {
     label: z.string(),
-    input: anyOf([Input, TextArea, Select, RadioGroup, CheckBoxGroup, Slider, DatePicker]),
+    input: anyOf([
+      Input,
+      TextArea,
+      Select,
+      RadioGroup,
+      CheckBoxGroup,
+      Slider,
+      DatePicker,
+      Switch,
+      Chips,
+    ]),
     hint: z.string().optional(),
   });
   const Form = add(
@@ -311,7 +363,83 @@ export function buildCatalogue<T extends Defined>(define: (definition: Definitio
     { name: z.string(), buttons: Buttons.ref, fields: z.array(FormControl.ref) },
   );
 
-  // Containers: they hold any block but another container.
+  // Mini-apps: what shows and keeps a state in the browser
+  const Display = add(
+    'Display',
+    'A large readout: the screen of a calculator, a counter, a score, a result. Pass a number as it is ($count) and it is formatted; label is a small line above it.',
+    { value: z.union([z.string(), z.number()]), label: z.string().optional() },
+  );
+  const Progress = add(
+    'Progress',
+    'A bar filled from 0 to max (100 by default): progress, a level, a share.',
+    { value: z.number(), max: z.number().optional(), label: z.string().optional() },
+  );
+  const Timer = add(
+    'Timer',
+    'A clock that runs in the browser, with start, pause and reset: a countdown from seconds, or a stopwatch when seconds is 0 or omitted. done runs when a countdown reaches zero.',
+    {
+      seconds: z.number().optional(),
+      title: z.string().optional(),
+      autoStart: z.boolean().optional(),
+      done: action.optional(),
+    },
+  );
+  const Checklist = add(
+    'Checklist',
+    'A list the user ticks off in the browser: tasks, a packing list, ingredients. With editable the user can also add and remove items: a to-do list.',
+    { items: z.array(z.string()), title: z.string().optional(), editable: z.boolean().optional() },
+  );
+
+  // Layout: containers hold any block, and one another
+  const Stack = add(
+    'Stack',
+    'Lays its children out in a column (default) or a row. A row wraps unless wrap is false, in which case it scrolls sideways.',
+    {
+      children: z.array(block),
+      direction: z.enum(['column', 'row']).optional(),
+      gap: z.enum(['s', 'm', 'l']).optional(),
+      align: z.enum(['start', 'center', 'end', 'stretch']).optional(),
+      justify: z.enum(['start', 'center', 'end', 'between']).optional(),
+      wrap: z.boolean().optional(),
+    },
+  );
+  const Grid = add(
+    'Grid',
+    'Lays its children out in equal columns, row after row: a keypad, a board of pads, a dashboard of panels. On a phone more than four columns fold.',
+    { children: z.array(block), columns: z.number(), gap: z.enum(['s', 'm', 'l']).optional() },
+  );
+  const Panel = add(
+    'Panel',
+    'A framed surface that groups blocks into one object: an app, a widget, a section of a dashboard.',
+    { children: z.array(block), title: z.string().optional() },
+  );
+  const Tab = add('Tab', 'One tab of Tabs.', { label: z.string(), content: z.array(block) });
+  const Tabs = add('Tabs', 'Alternative views of the same subject, one visible at a time.', {
+    items: z.array(Tab.ref),
+  });
+  const AccordionItem = add('AccordionItem', 'One section of an Accordion.', {
+    title: z.string(),
+    content: z.array(block),
+  });
+  const Accordion = add(
+    'Accordion',
+    'Sections folded under their titles, for details most readers skip.',
+    { items: z.array(AccordionItem.ref) },
+  );
+
+  const Response = define({
+    name: ROOT,
+    description:
+      'The root of every answer: its children stack from top to bottom. sources are the web pages the answer relies on, shown as links under it and cited in TextContent as [1], [2] (1-based).',
+    props: z.object({
+      children: z.array(block),
+      sources: z
+        .array(z.object({ title: z.string(), url: z.string(), publisher: z.string().optional() }))
+        .optional(),
+    }),
+  });
+
+  /** What stands on its own; the rest is a part of one of these. */
   const blocks = [
     Heading,
     TextContent,
@@ -336,42 +464,38 @@ export function buildCatalogue<T extends Defined>(define: (definition: Definitio
     Steps,
     Timeline,
     Cards,
+    Button,
     Buttons,
-    Form,
     FollowUps,
+    Form,
+    FormControl,
+    Input,
+    TextArea,
+    Select,
+    RadioGroup,
+    CheckBoxGroup,
+    Slider,
+    DatePicker,
+    Switch,
+    Chips,
+    Display,
+    Progress,
+    Timer,
+    Checklist,
+    Stack,
+    Grid,
+    Panel,
+    Tabs,
+    Accordion,
   ];
-  const block = anyOf(blocks, 'Block');
-  const Tab = add('Tab', 'One tab of Tabs.', { label: z.string(), content: z.array(block) });
-  const Tabs = add('Tabs', 'Alternative views of the same subject, one visible at a time.', {
-    items: z.array(Tab.ref),
-  });
-  const AccordionItem = add('AccordionItem', 'One section of an Accordion.', {
-    title: z.string(),
-    content: z.array(block),
-  });
-  const Accordion = add(
-    'Accordion',
-    'Sections folded under their titles, for details most readers skip.',
-    { items: z.array(AccordionItem.ref) },
-  );
-
-  const Response = define({
-    name: ROOT,
-    description:
-      'The root of every answer: its children stack from top to bottom. sources are the web pages the answer relies on, shown as links under it and cited in TextContent as [1], [2] (1-based).',
-    props: z.object({
-      children: z.array(anyOf([...blocks, Tabs, Accordion], 'Block | Tabs | Accordion')),
-      sources: z
-        .array(z.object({ title: z.string(), url: z.string(), publisher: z.string().optional() }))
-        .optional(),
-    }),
-  });
-
   const groups: ComponentGroup[] = [
     {
       name: 'Root',
       components: [ROOT],
-      notes: [`- Block is any of: ${blocks.map((item) => item.name).join(', ')}.`],
+      notes: [
+        `- Block is any of: ${blocks.map((item) => item.name).join(', ')}.`,
+        '- A Block slot also takes an expression that gives a Block or null: $tab == "map" ? map : list.',
+      ],
     },
     ...componentGroups,
   ];
@@ -432,15 +556,32 @@ export const componentGroups: ComponentGroup[] = [
   },
   {
     name: 'Layout',
-    components: ['Tabs', 'Tab', 'Accordion', 'AccordionItem'],
-    notes: ['- Tabs and Accordion go directly in Response; they cannot hold one another.'],
+    components: ['Stack', 'Grid', 'Panel', 'Tabs', 'Tab', 'Accordion', 'AccordionItem'],
+    notes: [
+      '- Response already stacks its children: reach for a layout only to put things side by side or to frame them.',
+      '- Side by side: Stack([a, b], "row"). Equal columns: Grid([...], 3). A keypad is a Grid of Buttons. Containers nest.',
+      '- Show or hide a block with a ternary where it stands: $step == 2 ? details : null.',
+    ],
   },
   {
     name: 'Buttons and follow-ups',
     components: ['Buttons', 'Button', 'FollowUps'],
     notes: [
-      '- A click on a Button or a suggestion reaches you as the next user message.',
+      '- A Button without an action, with @ToAssistant, or a suggestion, reaches you as the next user message.',
       '- Action([@OpenUrl("https://…")]) opens a page instead: Button("Open the docs", Action([@OpenUrl("https://example.com")])).',
+      '- Action([@Set($n, $n + 1)]) changes a $variable in the browser, at once, without reaching you. Steps run in order, each seeing what the previous one set.',
+    ],
+  },
+  {
+    name: 'Mini-apps',
+    components: ['Display', 'Progress', 'Timer', 'Checklist'],
+    notes: [
+      '- Asked for a tool or a small app (calculator, counter, converter, timer, quiz, tracker, to-do list, picker), build one that WORKS in the browser: its state in $variables, Buttons with @Set, fields bound to a $variable, and expressions for what is shown.',
+      '- Never use @ToAssistant for what the browser can compute: the app must react to a click at once.',
+      '- $variables hold a number, a text or true/false, never a list. Declare each with its default just under root: $count = 0.',
+      '- Arithmetic needs numbers. An Input of type "number", a Slider and @Set($n, $n * 10 + 7) give numbers; + joins as text as soon as one side is text.',
+      '- An expression can be a statement of its own and be reused by name, in arguments and in actions: total = $price * $qty.',
+      '- Time and lists that grow are not expressions: a clock is a Timer, a list the user edits is a Checklist with editable.',
     ],
   },
   {
@@ -458,8 +599,11 @@ export const componentGroups: ComponentGroup[] = [
       'CheckBoxItem',
       'Slider',
       'DatePicker',
+      'Switch',
+      'Chips',
     ],
     notes: [
+      '- A field also works outside a Form: pass a $variable as its value, and what the user types is that variable, live: Input("km", "0", "number", null, $km) then Display($km * 0.621).',
       '- Use a Form when you need two or more answers from the user before you can go on; for one question, just ask it.',
       '- Form(name, buttons, fields): always pass a Buttons reference with a primary Button.',
       '- Define each FormControl as its own statement. Never nest a Form in a Form.',
@@ -474,6 +618,7 @@ export const promptOptions = {
   additionalRules: [
     'A short or conversational answer is just root = Response([t]) with one TextContent. Do not dress up a simple answer.',
     'Reach for the other components when they carry the content better than prose: a Table to compare, a chart for figures, a Map for places, Steps for a procedure, Cards to choose between things, LinkCards for pages to open, a Form to ask for several values.',
+    'Asked to make, build or show something to use (a calculator, a timer, a tracker, a planner, a finder), answer with the working interface itself, in a Panel, not with an explanation of how one would build it.',
     'Write the text inside the components in the language of the user. Component names and enum values stay as they are.',
     'When you used web results, list the pages you relied on in the sources of Response, and cite them in the text as [1], [2].',
     'End an answer that opens onto next steps with FollowUps; skip it for small talk.',
@@ -515,7 +660,49 @@ f1 = FormControl("Destination", Input("destination", "Lisbonne", "text", {requir
 f2 = FormControl("Budget", Slider("budget", 300, 3000, 100, 1200, "€"))
 f3 = FormControl("Style", RadioGroup("style", [RadioItem("calm", "Tranquille"), RadioItem("busy", "Dense")], "calm"))
 btns = Buttons([Button("Chiffrer le voyage", Action([@ToAssistant("Chiffre ce voyage")]), "primary")])`,
+
+    `Example 5 — a calculator that computes in the browser (state, a keypad, a reused expression):
+
+root = Response([calc])
+$cur = 0
+$acc = 0
+$op = ""
+res = $op == "+" ? $acc + $cur : $op == "-" ? $acc - $cur : $op == "×" ? $acc * $cur : $op == "÷" ? $acc / $cur : $cur
+calc = Panel([screen, keys], "Calculatrice")
+screen = Display($cur, $op == "" ? "" : "" + $acc + " " + $op)
+keys = Grid([k7, k8, k9, kdiv, k4, k5, k6, kmul, k1, k2, k3, ksub, kc, k0, keq, kadd], 4, "s")
+k7 = Button("7", Action([@Set($cur, $cur * 10 + 7)]), "secondary")
+k8 = Button("8", Action([@Set($cur, $cur * 10 + 8)]), "secondary")
+k9 = Button("9", Action([@Set($cur, $cur * 10 + 9)]), "secondary")
+k4 = Button("4", Action([@Set($cur, $cur * 10 + 4)]), "secondary")
+k5 = Button("5", Action([@Set($cur, $cur * 10 + 5)]), "secondary")
+k6 = Button("6", Action([@Set($cur, $cur * 10 + 6)]), "secondary")
+k1 = Button("1", Action([@Set($cur, $cur * 10 + 1)]), "secondary")
+k2 = Button("2", Action([@Set($cur, $cur * 10 + 2)]), "secondary")
+k3 = Button("3", Action([@Set($cur, $cur * 10 + 3)]), "secondary")
+k0 = Button("0", Action([@Set($cur, $cur * 10)]), "secondary")
+kadd = Button("+", Action([@Set($acc, res), @Set($op, "+"), @Set($cur, 0)]), "ghost")
+ksub = Button("-", Action([@Set($acc, res), @Set($op, "-"), @Set($cur, 0)]), "ghost")
+kmul = Button("×", Action([@Set($acc, res), @Set($op, "×"), @Set($cur, 0)]), "ghost")
+kdiv = Button("÷", Action([@Set($acc, res), @Set($op, "÷"), @Set($cur, 0)]), "ghost")
+keq = Button("=", Action([@Set($cur, res), @Set($op, ""), @Set($acc, 0)]), "primary")
+kc = Button("C", Action([@Reset($cur, $acc, $op)]), "danger")`,
+
+    `Example 6 — fields bound to variables, a result computed live, a block shown on a condition:
+
+root = Response([app])
+$bill = 80
+$tip = 15
+$people = 2
+total = $bill * (1 + $tip / 100)
+app = Panel([fields, out, $people > 1 ? share : null], "Partager l'addition")
+fields = Grid([f1, f2, f3], 3)
+f1 = FormControl("Addition (€)", Input("bill", "0", "number", null, $bill))
+f2 = FormControl("Pourboire", Slider("tip", 0, 30, 1, 15, "%", $tip))
+f3 = FormControl("Convives", Input("people", "1", "number", null, $people))
+out = Display(@Round(total, 2), "Total avec pourboire (€)")
+share = Display(@Round(total / $people, 2), "Par personne (€)")`,
   ],
   toolCalls: false,
-  bindings: false,
+  bindings: true,
 };

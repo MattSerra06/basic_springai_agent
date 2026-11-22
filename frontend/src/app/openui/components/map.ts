@@ -68,7 +68,14 @@ export function places(value: unknown): Place[] {
     </ol>
   </figure>`,
 })
-export class MapBlock extends Block<{ markers: unknown; title: string; connect: boolean }> {
+export class MapBlock extends Block<{
+  markers: unknown;
+  title: string;
+  connect: boolean;
+  focus: number;
+}> {
+  /** The places and route now on the map. */
+  private drawn = '';
   private readonly canvas = viewChild.required<ElementRef<HTMLElement>>('canvas');
   protected readonly places = computed(() => places(this.props()?.markers));
   /** Leaflet could not be loaded or started: the list stands alone. */
@@ -88,7 +95,8 @@ export class MapBlock extends Block<{ markers: unknown; title: string; connect: 
     afterRenderEffect(() => {
       const all = this.places();
       const connect = !!this.props()?.connect;
-      void this.draw(all, connect);
+      const focus = Number(this.props()?.focus) || 0;
+      void this.draw(all, connect).then(() => this.focusOn(focus));
     });
     inject(DestroyRef).onDestroy(() => {
       this.destroyed = true;
@@ -139,6 +147,13 @@ export class MapBlock extends Block<{ markers: unknown; title: string; connect: 
       connect = !!this.props()?.connect;
     }
 
+    // The reply is drawn again whenever its state changes: the pins only when they did.
+    const drawing = JSON.stringify([all, connect]);
+    if (drawing === this.drawn) {
+      return;
+    }
+    this.drawn = drawing;
+
     const L = this.leaflet!;
     this.layer!.clearLayers();
     this.pins = all.map((place, index) => {
@@ -183,6 +198,17 @@ export class MapBlock extends Block<{ markers: unknown; title: string; connect: 
 
   /** Set once the map has been framed on its pins: what moves it after is the reader. */
   private framed = false;
+
+  /** The pin last centred on at the reply's request, so that it is done once per change. */
+  private focused = 0;
+
+  /** Centres on the pin the reply points at, e.g. the place just clicked in a list. */
+  private focusOn(focus: number): void {
+    if (focus !== this.focused && this.pins[focus - 1]) {
+      this.focused = focus;
+      this.show(focus - 1);
+    }
+  }
 
   protected show(index: number): void {
     const pin = this.pins[index];

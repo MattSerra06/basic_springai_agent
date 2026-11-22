@@ -2,10 +2,12 @@ import { Type } from '@angular/core';
 import { createLibrary, defineComponent } from '@openuidev/angular-lang';
 import { buildCatalogue } from './catalogue';
 import { Button, Buttons, Cards, FollowUps } from './components/actions';
+import { Checklist, Display, Progress, Timer } from './components/apps';
 import { AreaChart, BarChart, HorizontalBarChart, LineChart, PieChart } from './components/charts';
 import { KeyValues, List, Metrics, Steps, Table, Timeline } from './components/data';
 import {
   CheckBoxGroup,
+  Chips,
   DatePicker,
   Form,
   FormControl,
@@ -13,9 +15,10 @@ import {
   RadioGroup,
   Select,
   Slider,
+  Switch,
   TextArea,
 } from './components/forms';
-import { Accordion, Part, Response, Tabs } from './components/layout';
+import { Accordion, Grid, Panel, Part, Response, Stack, Tabs } from './components/layout';
 import { MapBlock } from './components/map';
 import {
   Callout,
@@ -71,6 +74,15 @@ const renderers: Record<string, Type<unknown>> = {
   CheckBoxGroup,
   Slider,
   DatePicker,
+  Switch,
+  Chips,
+  Display,
+  Progress,
+  Timer,
+  Checklist,
+  Stack,
+  Grid,
+  Panel,
   Tabs,
   Accordion,
 };

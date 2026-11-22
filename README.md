@@ -129,9 +129,26 @@ l'agent appelle déjà.
 | Graphiques | `BarChart`, `HorizontalBarChart`, `LineChart`, `AreaChart`, `PieChart` |
 | Carte | `Map` et ses `Marker` (Leaflet, fonds OpenStreetMap) |
 | Listes | `List`, `Steps`, `Timeline` |
-| Cartes et actions | `Cards`, `Buttons`, `FollowUps` |
-| Mise en page | `Tabs`, `Accordion` |
-| Formulaires | `Form`, `Input`, `TextArea`, `Select`, `RadioGroup`, `CheckBoxGroup`, `Slider`, `DatePicker` |
+| Cartes et actions | `Cards`, `Buttons`, `Button` (quatre variantes, trois tailles, un son), `FollowUps` |
+| Mise en page | `Stack`, `Grid`, `Panel`, `Tabs`, `Accordion` : les conteneurs s'emboîtent |
+| Formulaires et champs | `Form`, `Input`, `TextArea`, `Select`, `RadioGroup`, `CheckBoxGroup`, `Slider`, `DatePicker`, `Switch`, `Chips` |
+| Mini-applications | `Display`, `Progress`, `Timer`, `Checklist` |
+
+### Mini-applications
+
+Une interface générée peut vivre dans le navigateur, sans repasser par le modèle : une
+calculatrice, un convertisseur, un minuteur, un tableau de suivi.
+
+- **État** : le modèle déclare des variables (`$total = 0`), qui tiennent un nombre, un
+  texte ou un booléen. Elles sont remises à zéro au rechargement de la page.
+- **Actions** : un bouton les modifie avec `Action([@Set($n, $n + 1)])` ou `@Reset(...)`.
+  Rien n'est envoyé au backend ; ces boutons restent actifs pendant qu'une réponse arrive.
+- **Champs reliés** : un champ reçoit une variable en dernier argument
+  (`Input("km", "0", "number", null, $km)`) : ce qu'on tape devient la variable.
+- **Expressions** : arithmétique, comparaisons, `? :`, `@Round`, `@Sum`, `@Each`… recalculées
+  à chaque changement. Un bloc s'affiche sous condition : `$n > 1 ? detail : null`.
+- **Ce que le langage ne sait pas exprimer** est porté par un composant : le temps qui
+  passe par `Timer`, une liste qui grandit par `Checklist`, un son par `Button`.
 
 La page http://localhost:4200/catalogue les montre tous, chacun à partir du programme
 qu'écrirait le modèle, sans appeler le backend.

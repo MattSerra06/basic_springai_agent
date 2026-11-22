@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { readable } from './components/apps';
 import { GeneratedUi } from './generated-ui';
+import { samples } from './samples';
 
 describe('GeneratedUi', () => {
   let fixture: ComponentFixture<GeneratedUi>;
@@ -133,5 +135,84 @@ btns = Buttons([Button("Chiffrer", Action([@ToAssistant("Chiffre ce voyage")]), 
     await settle();
 
     expect(text('.gui-raw')).toEqual(['root = Jauge(3)']);
+  });
+
+  describe('a mini-app', () => {
+    const calculator = samples.find((sample) => sample.title === 'Calculatrice')!.program;
+    const screen = () => text('.gui-display-value')[0];
+
+    async function press(...labels: string[]) {
+      for (const label of labels) {
+        [...el().querySelectorAll('button')]
+          .find((node) => node.textContent?.trim() === label)!
+          .click();
+        await settle();
+      }
+    }
+
+    it('computes in the browser, without sending anything', async () => {
+      await draw(calculator);
+
+      await press('2', '0', '+', '5', '=');
+      expect(screen()).toBe('25');
+
+      // An operation chained on the result, then a division that does not fall round
+      await press('×', '4', '-', '1', '0', '=');
+      expect(screen()).toBe('90');
+      await press('÷', '7', '=');
+      expect(screen()).toBe(readable(90 / 7));
+
+      await press('C');
+      expect(screen()).toBe('0');
+      expect(sent).toEqual([]);
+    });
+
+    it('goes on working while a reply is being generated elsewhere', async () => {
+      await draw(calculator, { busy: true });
+
+      await press('7', '×', '6', '=');
+
+      expect(screen()).toBe('42');
+    });
+
+    it('recomputes what it shows as a field bound to a variable is typed in', async () => {
+      await draw(`root = Response([f, out, $km > 100 ? far : null])
+$km = 10
+f = Input("km", "0", "number", null, $km)
+out = Display(@Round($km * 0.621, 1), "Miles")
+far = Callout("info", "Loin", "Plus de cent kilomètres.")`);
+
+      const input = el().querySelector<HTMLInputElement>('input[name=km]')!;
+      expect(input.value).toBe('10');
+      expect(screen()).toBe(readable(6.2));
+      expect(el().querySelector('.gui-callout')).toBeNull();
+
+      input.value = '200';
+      input.dispatchEvent(new Event('input'));
+      await settle();
+
+      expect(screen()).toBe(readable(124.2));
+      expect(text('.gui-callout-text')).toEqual(['Plus de cent kilomètres.']);
+    });
+
+    it('lays out containers in one another and switches a block with a choice', async () => {
+      await draw(`root = Response([app])
+$vue = "Liste"
+app = Panel([Chips("vue", ["Liste", "Chiffres"], $vue), $vue == "Liste" ? list : nums], "Tableau de bord")
+list = Checklist(["Un", "Deux"], "À faire", true)
+nums = Grid([Display(3, "Ouverts"), Progress(1, 4, "Avancement")], 2)`);
+
+      expect(text('.gui-panel-title')).toEqual(['Tableau de bord']);
+      expect(text('.gui-checklist li .gui-option')).toEqual(['Un', 'Deux']);
+
+      el().querySelector<HTMLInputElement>('.gui-checklist input[type=checkbox]')!.click();
+      await settle();
+      expect(text('.gui-checklist-head .gui-label')).toEqual(['1/2']);
+
+      await press('Chiffres');
+      expect(el().querySelector('.gui-checklist')).toBeNull();
+      expect(screen()).toBe('3');
+      expect(el().querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')).toBe('25');
+    });
   });
 });

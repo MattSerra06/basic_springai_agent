@@ -22,9 +22,18 @@ export abstract class Block<P> {
     return this.props() ?? {};
   }
 
+  /**
+   * Whether a click cannot run `action` now. Nothing runs while this reply is still
+   * being written. What stays in the browser (a `@Set`, a page to open) then always
+   * runs; what sends a message waits for the reply in progress.
+   */
+  protected blocked(action?: unknown): boolean {
+    return this.ui.isStreaming || (this.host.busy() && sendsMessage(action));
+  }
+
   /** Sends `message` as the next user message, or runs `action` when there is one. */
   protected act(message: string, action?: unknown): void {
-    if (this.host.busy() || this.ui.isStreaming) {
+    if (this.blocked(action)) {
       return;
     }
     void this.ui.triggerAction(message, this.formName, toPlan(action));

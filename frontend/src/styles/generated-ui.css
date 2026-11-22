@@ -3,16 +3,27 @@
  * by the OpenUI renderer, outside any template of the app, so their styles are global;
  * every class starts with gui-. Only tokens are used: both themes come for free.
  *
- * The same voice as the thread: the serif names things, the sans is read, the mono
- * labels. Blocks sit on the page, set apart by hairlines rather than boxed.
+ * One voice: the sans of the replies, in three weights. Nothing here is set in the
+ * serif, and the mono is kept for code. Hierarchy comes from weight and from colour.
+ *
+ * Three materials, as in the rest of the app. The page: text and lists sit on it bare,
+ * and a panel or a form is only a frame drawn on it, in its colour. Paper: the white
+ * tiles one reads or presses (a figure, a card, a key, a field), their corner turned
+ * towards the agent as the orange sheet of a message is turned towards the user. Wood:
+ * what labels or carries (a table head, a track, the tabs). Orange is for what can be
+ * clicked and what is live.
  */
 
-/* A column of blocks: the reply, a tab, a section. */
+/* A column of blocks: the reply, a panel, a tab. */
 .gui {
+  --sheet-radius: var(--radius-sm) var(--radius-lg) var(--radius-lg) var(--radius-lg);
+  --weight-strong: 650;
+
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
   min-width: 0;
+  font-family: var(--font-text);
   font-size: var(--text-body);
   line-height: var(--leading-reading);
 }
@@ -25,10 +36,11 @@
   overflow-wrap: anywhere;
   line-height: var(--leading-reading);
 }
+/* The small line that names what follows: sentence case, in the sans. */
 .gui-label {
-  font: var(--type-label);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
+  font-size: var(--text-small);
+  font-weight: 600;
+  line-height: var(--leading-text);
   color: var(--color-ink-soft);
 }
 .gui-caption {
@@ -59,9 +71,8 @@
 /* Text */
 .gui-heading {
   margin: var(--space-3) 0 0;
-  font-family: var(--font-display);
   font-size: var(--text-brand);
-  font-weight: 400;
+  font-weight: var(--weight-strong);
   line-height: var(--leading-snug);
   letter-spacing: var(--tracking-display);
   text-wrap: balance;
@@ -71,6 +82,7 @@
 }
 .gui-heading-sub {
   font-size: var(--text-entry);
+  letter-spacing: 0;
 }
 .gui-text {
   margin: 0;
@@ -80,9 +92,15 @@
 .gui-text + .gui-text {
   margin-top: var(--space-4);
 }
+.gui-text strong,
+.gui td strong,
+.gui-facts strong {
+  font-weight: var(--weight-strong);
+}
 .gui-text-lead {
-  font: 400 var(--text-entry) / var(--leading-text) var(--font-display);
-  letter-spacing: var(--tracking-display);
+  font-size: var(--text-entry);
+  font-weight: 500;
+  line-height: var(--leading-text);
 }
 .gui-text-muted {
   font-size: var(--text-small);
@@ -90,32 +108,40 @@
 }
 .gui-link {
   color: var(--color-accent-text);
+  font-weight: 500;
   text-decoration: underline;
-  text-decoration-thickness: 1px;
+  text-decoration-color: var(--color-accent-soft);
+  text-decoration-thickness: 2px;
   text-underline-offset: 0.2em;
+  transition: text-decoration-color var(--fast);
 }
 .gui-link:hover {
-  text-decoration-thickness: 2px;
+  text-decoration-color: currentColor;
 }
 .gui-code {
-  padding: 0.1em 0.35em;
+  padding: 0.1em 0.4em;
   border-radius: var(--radius-sm);
-  background: var(--color-hover);
+  background: var(--color-selected);
 }
-/* A citation: the number of its source, raised, in the mono. */
+/* A citation: the number of its source, in a small orange disc. */
 .gui-cite {
   display: inline-grid;
   place-items: center;
   min-width: 1.25rem;
   height: 1.25rem;
   margin-inline: 0.1em;
-  padding-inline: 0.25em;
-  vertical-align: 0.25em;
+  padding-inline: 0.3em;
+  vertical-align: 0.2em;
   border-radius: var(--radius-full);
   background: var(--color-accent-soft);
   color: var(--color-accent-text);
-  font: 500 var(--text-label) / 1 var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 700;
+  line-height: 1;
   text-decoration: none;
+  transition:
+    background var(--fast),
+    color var(--fast);
 }
 .gui-cite:hover {
   background: var(--color-accent);
@@ -123,21 +149,20 @@
 }
 
 .gui-callout {
-  padding: var(--space-3) var(--space-4);
-  border-left: 3px solid var(--tone);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--sheet-radius);
   background: var(--tone-bg);
 }
 .gui-tone-info {
-  --tone: var(--color-rule-strong);
-  --tone-bg: var(--color-hover);
+  --tone: var(--color-ink-soft);
+  --tone-bg: var(--color-selected);
 }
 .gui-tone-success {
   --tone: var(--color-good);
   --tone-bg: var(--color-good-bg);
 }
 .gui-tone-warning {
-  --tone: var(--color-accent);
+  --tone: var(--color-accent-text);
   --tone-bg: var(--color-accent-soft);
 }
 .gui-tone-danger {
@@ -150,11 +175,21 @@
 .gui-callout-title {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+  font-weight: var(--weight-strong);
+  line-height: var(--leading-text);
 }
 .gui-callout-title .gui-label {
-  color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--tone);
+}
+.gui-callout-title .gui-label::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--tone);
 }
 .gui-callout-text {
   margin-top: var(--space-1) !important;
@@ -164,19 +199,21 @@
 
 .gui-quote {
   margin: 0;
-  padding-left: var(--space-5);
-  border-left: 1px solid var(--color-accent);
+  padding: var(--space-1) 0 var(--space-1) var(--space-5);
+  border-left: 3px solid var(--color-accent);
 }
 .gui-quote blockquote {
   margin: 0 0 var(--space-2);
-  font: italic 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+  font-size: var(--text-entry);
+  font-weight: 500;
+  line-height: var(--leading-text);
   text-wrap: balance;
 }
 
 .gui-codeblock {
   margin: 0;
   border: var(--rule);
-  border-radius: var(--radius-md);
+  border-radius: var(--sheet-radius);
   background: var(--color-surface);
   overflow: hidden;
 }
@@ -185,7 +222,7 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
-  border-bottom: var(--rule);
+  background: var(--color-selected);
 }
 .gui-codeblock pre {
   margin: 0;
@@ -197,16 +234,19 @@
 .gui-chip {
   height: var(--control-sm);
   padding-inline: var(--space-3);
-  border: 1px solid var(--color-rule-strong);
+  border: 0;
   border-radius: var(--radius-full);
-  background: transparent;
-  font: var(--type-label);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
+  background: var(--color-surface);
+  font-size: var(--text-small);
+  font-weight: 600;
   cursor: pointer;
+  transition:
+    background var(--fast),
+    color var(--fast);
 }
 .gui-chip:hover {
-  background: var(--color-hover);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 .gui-separator {
   width: 100%;
@@ -221,25 +261,40 @@
 .gui-tags,
 .gui-cards,
 .gui-followups ul,
-.gui-map-places {
+.gui-map-places,
+.gui-checklist ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .gui-links {
-  border-top: var(--rule);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-3);
 }
 .gui-linkcard {
   position: relative;
   display: grid;
+  align-content: start;
   gap: var(--space-1);
-  padding: var(--space-3) var(--space-6) var(--space-3) 0;
-  border-bottom: var(--rule);
+  height: 100%;
+  padding: var(--space-4) var(--space-6) var(--space-4) var(--space-4);
+  border: var(--rule);
+  border-radius: var(--sheet-radius);
+  background: var(--color-surface);
   color: inherit;
   text-decoration: none;
+  transition:
+    border-color var(--fast),
+    translate var(--fast) var(--ease-out),
+    box-shadow var(--fast);
+}
+.gui-linkcard .gui-label {
+  color: var(--color-accent-text);
 }
 .gui-linkcard-title {
-  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+  font-weight: var(--weight-strong);
+  line-height: var(--leading-snug);
 }
 .gui-linkcard-text {
   font-size: var(--text-small);
@@ -249,17 +304,21 @@
 .gui-linkcard .gui-arrow {
   position: absolute;
   top: var(--space-3);
-  right: var(--space-1);
+  right: var(--space-4);
 }
-.gui-linkcard:hover .gui-linkcard-title {
-  color: var(--color-accent-text);
+.gui-linkcard:hover {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-field);
+  translate: 0 -2px;
 }
 .gui-linkcard:hover .gui-arrow {
   translate: 2px -2px;
 }
 .gui-sources {
-  padding-top: var(--space-4);
-  border-top: var(--rule);
+  padding: var(--space-4) var(--space-5);
+  border: var(--rule);
+  border-radius: var(--sheet-radius);
+  background: var(--color-surface);
 }
 .gui-sources > p {
   margin: 0 0 var(--space-2);
@@ -281,24 +340,30 @@
 .gui-sources a::before {
   content: counter(source);
   flex: none;
-  min-width: 1.25rem;
-  font: 500 var(--text-label) / 1 var(--font-mono);
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--color-accent-soft);
   color: var(--color-accent-text);
+  font-size: var(--text-label);
+  font-weight: 700;
+  line-height: 1;
 }
 .gui-source-title {
   font-size: var(--text-small);
+  font-weight: 600;
   line-height: var(--leading-text);
-  text-decoration: underline;
-  text-decoration-color: var(--color-rule-strong);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.2em;
 }
 .gui-sources a:hover .gui-source-title {
   color: var(--color-accent-text);
-  text-decoration-color: currentColor;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
-.gui-sources .gui-label {
+.gui-sources a .gui-label {
   flex: none;
+  font-weight: 400;
 }
 
 .gui-image {
@@ -309,8 +374,8 @@
 .gui-card > img {
   display: block;
   width: 100%;
-  border-radius: var(--radius-md);
-  background: var(--color-hover);
+  border-radius: var(--sheet-radius);
+  background: var(--color-selected);
   object-fit: cover;
 }
 .gui-image img {
@@ -323,6 +388,7 @@
 }
 .gui-gallery img {
   aspect-ratio: 4 / 3;
+  border-radius: var(--radius-md);
 }
 .gui-tags {
   display: flex;
@@ -331,13 +397,16 @@
 }
 .gui-tag {
   width: fit-content;
-  padding: 0.3em 0.75em;
-  border: 1px solid var(--color-rule-strong);
+  padding: 0.25em 0.8em;
+  border: var(--rule);
   border-radius: var(--radius-full);
-  font: var(--type-label);
+  background: var(--color-surface);
+  font-size: var(--text-small);
+  font-weight: 600;
+  line-height: var(--leading-text);
 }
 
-/* Tables */
+/* Tables: a head of wood, rows on the page. */
 .gui-table {
   margin: 0;
   min-width: 0;
@@ -347,28 +416,43 @@
 }
 .gui table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: var(--text-small);
   line-height: var(--leading-text);
 }
 .gui th {
-  padding: var(--space-2) var(--space-4) var(--space-2) 0;
-  border-bottom: var(--rule-ink);
-  font: var(--type-label);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-wood);
+  font-weight: 700;
   text-align: left;
-  color: var(--color-ink-soft);
   white-space: nowrap;
 }
+.gui th:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-md);
+}
+.gui th:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+.gui th:only-child {
+  border-radius: var(--radius-sm) var(--radius-md) var(--radius-md) var(--radius-md);
+}
 .gui td {
-  padding: var(--space-3) var(--space-4) var(--space-3) 0;
+  padding: var(--space-3) var(--space-4);
   border-bottom: var(--rule);
   vertical-align: top;
 }
-.gui th:last-child,
-.gui td:last-child {
-  padding-right: 0;
+.gui tr:last-child td {
+  border-bottom: 0;
+}
+.gui tbody tr {
+  transition: background var(--fast);
+}
+.gui tbody tr:hover {
+  background: var(--color-hover);
+}
+.gui td:first-child {
+  font-weight: 600;
 }
 .gui .gui-num {
   text-align: right;
@@ -377,8 +461,12 @@
 }
 
 .gui-facts {
+  display: grid;
   margin: 0;
-  border-top: var(--rule);
+  padding: var(--space-2) var(--space-5);
+  border: var(--rule);
+  border-radius: var(--sheet-radius);
+  background: var(--color-surface);
 }
 .gui-facts > div {
   display: flex;
@@ -386,46 +474,64 @@
   gap: var(--space-5);
   padding-block: var(--space-2);
   border-bottom: var(--rule);
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+}
+.gui-facts > div:last-child {
+  border-bottom: 0;
 }
 .gui-facts dt {
   color: var(--color-ink-soft);
 }
 .gui-facts dd {
   margin: 0;
+  font-weight: 600;
   text-align: right;
 }
 
+/* Headline figures: white tiles, the figure in full weight. */
 .gui-metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-  gap: var(--space-5);
+  gap: var(--space-3);
   margin: 0;
-  padding-block: var(--space-4);
-  border-block: var(--rule);
+}
+.gui-metric {
+  padding: var(--space-4);
+  border: var(--rule);
+  border-radius: var(--sheet-radius);
+  background: var(--color-surface);
 }
 .gui-metric dd {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   margin: var(--space-1) 0 0;
 }
 .gui-metric-value {
-  font-family: var(--font-display);
   font-size: var(--text-brand);
-  font-weight: 400;
-  line-height: var(--leading-tight);
+  font-weight: 700;
+  line-height: var(--leading-snug);
   letter-spacing: var(--tracking-display);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .gui-metric-detail {
-  margin-top: var(--space-1);
+  margin-top: var(--space-2);
+  padding: 0.1em 0.6em;
+  border-radius: var(--radius-full);
+  background: var(--color-hover);
   font-size: var(--text-small);
+  font-weight: 600;
   line-height: var(--leading-text);
   color: var(--color-ink-soft);
 }
-.gui-trend-up > span {
+.gui-trend-up {
+  background: var(--color-good-bg);
   color: var(--color-good);
 }
-.gui-trend-down > span {
+.gui-trend-down {
+  background: var(--color-danger-bg);
   color: var(--color-danger);
 }
 
@@ -449,9 +555,9 @@
   content: '';
   position: absolute;
   left: 0.2rem;
-  top: 0.72em;
-  width: 0.375rem;
-  height: 0.375rem;
+  top: 0.68em;
+  width: 0.4375rem;
+  height: 0.4375rem;
   border-radius: 50%;
   background: var(--color-accent);
 }
@@ -459,18 +565,23 @@
   padding-left: var(--space-6);
 }
 .gui-list-number > li::before {
-  content: counter(item, decimal-leading-zero);
-  top: 0.45em;
+  content: counter(item);
+  top: 0.2em;
   left: 0;
-  width: auto;
-  height: auto;
-  background: none;
-  font: 500 var(--text-label) / 1 var(--font-mono);
+  display: grid;
+  place-items: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  background: var(--color-accent-soft);
   color: var(--color-accent-text);
+  font-size: var(--text-label);
+  font-weight: 700;
+  line-height: 1;
 }
 .gui-list-title,
 .gui-step-title {
   display: block;
+  font-weight: 600;
 }
 .gui-list-text,
 .gui-step-text {
@@ -479,23 +590,35 @@
   line-height: var(--leading-text);
   color: var(--color-ink-soft);
 }
+/* An item that can be clicked is a sheet; one that cannot is text. */
+.gui-list:has(.gui-list-action) > li {
+  padding-left: 0;
+}
+.gui-list:has(.gui-list-action) > li::before {
+  display: none;
+}
 .gui-list-action {
+  position: relative;
   display: block;
   width: 100%;
-  padding: 0 var(--space-6) 0 0;
-  border: 0;
-  background: none;
+  padding: var(--space-3) var(--space-7) var(--space-3) var(--space-4);
+  border: var(--rule);
+  border-radius: var(--sheet-radius);
+  background: var(--color-surface);
   text-align: left;
   cursor: pointer;
-  position: relative;
+  transition:
+    border-color var(--fast),
+    background var(--fast);
 }
 .gui-list-action .gui-arrow {
   position: absolute;
-  top: 0;
-  right: var(--space-1);
+  top: var(--space-3);
+  right: var(--space-4);
 }
-.gui-list-action:hover:enabled .gui-list-title {
-  color: var(--color-accent-text);
+.gui-list-action:hover:enabled {
+  border-color: var(--color-accent);
+  background: var(--color-selected);
 }
 .gui-list-action:hover:enabled .gui-arrow {
   translate: 3px 0;
@@ -519,11 +642,12 @@
 .gui-timeline > li::after {
   content: '';
   position: absolute;
-  left: 0.9375rem;
+  left: calc(1rem - 1px);
   top: 2.25rem;
   bottom: 0.125rem;
-  width: 1px;
-  background: var(--color-rule-strong);
+  width: 2px;
+  border-radius: 1px;
+  background: var(--color-accent-soft);
 }
 .gui-steps > li:last-child::after,
 .gui-timeline > li:last-child::after {
@@ -538,45 +662,67 @@
   place-items: center;
   width: 2rem;
   height: 2rem;
-  border: 1px solid var(--color-ink);
   border-radius: 50%;
-  font: 500 var(--text-label) / 1 var(--font-mono);
+  background: linear-gradient(150deg, var(--color-accent), var(--color-accent-strong));
+  color: var(--color-on-accent);
+  font-size: var(--text-small);
+  font-weight: 700;
+  line-height: 1;
 }
 .gui-step-title {
-  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
-  padding-top: 0.2rem;
+  padding-top: 0.1rem;
+  font-weight: var(--weight-strong);
 }
 .gui-timeline > li::before {
   content: '';
   position: absolute;
-  left: 0.6875rem;
-  top: 0.3rem;
-  width: 0.5625rem;
-  height: 0.5625rem;
+  left: 0.625rem;
+  top: 0.35rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 3px solid var(--color-accent);
   border-radius: 50%;
-  background: var(--color-accent);
 }
 .gui-timeline > li::after {
-  top: 1.25rem;
+  top: 1.4rem;
 }
 .gui-timeline .gui-label {
   display: block;
   color: var(--color-accent-text);
 }
 
-/* Cards */
+/* Tiles of paper: a card, a chart, a list to tick. */
+.gui-card,
+.gui-chart,
+.gui-checklist,
+.gui-accordion details {
+  border: var(--rule);
+  border-radius: var(--sheet-radius);
+  background: var(--color-surface);
+}
+/* Frames: a panel and a form are drawn on the page, in its colour; what they hold is paper. */
+.gui-panel,
+.gui-form {
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--sheet-radius);
+  background: var(--color-bg);
+}
 .gui-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 .gui-card {
   display: flex;
   flex-direction: column;
-  border: var(--rule);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
   overflow: hidden;
+  transition:
+    border-color var(--fast),
+    box-shadow var(--fast);
+}
+.gui-card:hover {
+  border-color: var(--color-rule-strong);
+  box-shadow: var(--shadow-field);
 }
 .gui-card > img {
   aspect-ratio: 16 / 10;
@@ -589,10 +735,15 @@
   gap: var(--space-2);
   padding: var(--space-4);
 }
+.gui-card .gui-tag {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+}
 .gui-card-title {
   margin: 0;
-  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
-  letter-spacing: var(--tracking-display);
+  font-size: var(--text-entry);
+  font-weight: var(--weight-strong);
+  line-height: var(--leading-snug);
 }
 .gui-card-text {
   flex: 1;
@@ -603,6 +754,93 @@
 }
 .gui-card .gui-buttons {
   margin-top: var(--space-2);
+}
+.gui-panel {
+  padding: var(--space-5);
+}
+.gui-panel-title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-entry);
+  font-weight: var(--weight-strong);
+  line-height: var(--leading-snug);
+}
+/*
+ * Two levels, no more: a panel in a panel is a tile of paper, and what that tile holds
+ * sits on it bare, or it would be boxes in boxes.
+ */
+.gui-panel .gui-panel {
+  border: var(--rule);
+  background: var(--color-surface);
+}
+.gui-panel .gui-panel .gui-panel-title {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-body);
+}
+.gui-panel .gui-panel :is(.gui-facts, .gui-metric, .gui-display, .gui-timer) {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.gui-panel .gui-panel :is(.gui-tag, .gui-btn-secondary, .gui-chip-option, .gui-input) {
+  background: var(--color-bg);
+}
+
+/* Layout */
+.gui-stack,
+.gui-cols {
+  --gap: var(--space-4);
+  gap: var(--gap);
+  min-width: 0;
+}
+.gui-gap-s {
+  --gap: var(--space-2);
+}
+.gui-gap-l {
+  --gap: var(--space-6);
+}
+.gui-stack {
+  display: flex;
+  flex-direction: column;
+}
+.gui-stack > openui-render-node,
+.gui-cols > openui-render-node {
+  display: contents;
+}
+.gui-stack-row {
+  flex-flow: row wrap;
+  align-items: flex-start;
+}
+/* In a row what is wide shares the width; a button, a switch, a tag keep their own. */
+.gui-stack-row > openui-render-node > openui-dynamic-host > * {
+  flex: 1 1 13rem;
+  min-width: 0;
+}
+.gui-stack-row
+  > openui-render-node
+  > openui-dynamic-host
+  > :is(.gui-switch, .gui-chips, .gui-tags, .gui-buttons, .gui-btn) {
+  flex: 0 1 auto;
+}
+.gui-stack-scroll {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+.gui-stack-scroll > openui-render-node > openui-dynamic-host > * {
+  flex: 0 0 min(16rem, 80%);
+}
+.gui-cols {
+  display: grid;
+  grid-template-columns: repeat(var(--columns, 2), minmax(0, 1fr));
+  align-items: stretch;
+}
+.gui-cols .gui-btn {
+  width: 100%;
+  padding-inline: var(--space-2);
+}
+.gui-cols > openui-render-node > openui-dynamic-host > * {
+  min-width: 0;
 }
 
 /* Buttons and follow-ups */
@@ -617,107 +855,159 @@
 .gui-btn {
   min-height: var(--control);
   padding: 0 var(--space-5);
-  border: 1px solid var(--color-solid);
+  border: 1px solid transparent;
   border-radius: var(--radius-full);
-  background: var(--color-solid);
-  color: var(--color-on-solid);
   font-size: var(--text-small);
-  font-weight: 500;
+  font-weight: 600;
+  line-height: var(--leading-snug);
   cursor: pointer;
   transition:
     background var(--fast),
     border-color var(--fast),
     color var(--fast),
+    box-shadow var(--fast),
     scale var(--fast) var(--ease-swing);
 }
-.gui-btn:hover:enabled {
+.gui-btn:active:enabled {
+  scale: 0.96;
+}
+.gui-btn-s {
+  min-height: var(--control-sm);
+  padding-inline: var(--space-3);
+}
+.gui-btn-l {
+  min-height: 4rem;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-body);
+}
+/* The one to press: the orange of a message sent. */
+.gui-btn-primary {
+  background: linear-gradient(150deg, var(--color-accent), var(--color-accent-strong));
+  color: var(--color-on-accent);
+  box-shadow: 0 0.5rem 1rem -0.625rem var(--color-accent);
+}
+.gui-btn-primary:hover:enabled {
+  box-shadow: 0 0.75rem 1.25rem -0.625rem var(--color-accent);
+}
+.gui-btn-secondary {
+  background: var(--color-surface);
+  border-color: var(--color-rule);
+  color: var(--color-ink);
+}
+.gui-btn-secondary:hover:enabled {
   border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+}
+.gui-btn-ghost {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+}
+.gui-btn-ghost:hover:enabled {
   background: var(--color-accent);
   color: var(--color-on-accent);
 }
-.gui-btn:active:enabled {
-  scale: 0.97;
+.gui-btn-danger {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
-.gui-btn-secondary {
-  border-color: var(--color-rule-strong);
-  background: transparent;
-  color: var(--color-ink);
+.gui-btn-danger:hover:enabled {
+  border-color: var(--color-danger);
 }
 .gui-btn:disabled {
   opacity: 0.55;
+  box-shadow: none;
   cursor: default;
 }
-.gui-followups {
-  padding-top: var(--space-4);
-  border-top: var(--rule);
-}
 .gui-followups > p {
-  margin: 0 0 var(--space-1);
+  margin: 0 0 var(--space-2);
+}
+.gui-followups ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 .gui-followups button {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-4);
-  width: 100%;
-  padding: var(--space-2) var(--space-1) var(--space-2) 0;
-  border: 0;
-  border-bottom: var(--rule);
-  background: none;
-  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-accent-soft);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+  font-size: var(--text-small);
+  font-weight: 600;
+  line-height: var(--leading-text);
   text-align: left;
   cursor: pointer;
+  transition:
+    background var(--fast),
+    color var(--fast);
 }
-.gui-followups li:last-child button {
-  border-bottom: 0;
+.gui-followups .gui-arrow {
+  color: inherit;
 }
 .gui-followups button:hover:enabled {
-  color: var(--color-accent-text);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 .gui-followups button:hover:enabled .gui-arrow {
   translate: 3px 0;
 }
 .gui-followups button:disabled {
+  opacity: 0.6;
   cursor: default;
-  color: var(--color-ink-soft);
 }
 
 /* Tabs and sections */
 .gui-tablist {
   display: flex;
-  gap: var(--space-5);
+  gap: var(--space-1);
+  width: fit-content;
+  max-width: 100%;
   margin-bottom: var(--space-4);
-  border-bottom: var(--rule);
+  padding: var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--color-wood);
   overflow-x: auto;
 }
 .gui-tablist button {
   flex: none;
-  padding: var(--space-2) 0;
+  min-height: var(--control-sm);
+  padding: 0 var(--space-4);
   border: 0;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  border-radius: var(--radius-full);
   background: none;
-  font: var(--type-label);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
+  font-size: var(--text-small);
+  font-weight: 600;
   color: var(--color-ink-soft);
   cursor: pointer;
+  transition:
+    background var(--fast),
+    color var(--fast);
 }
 .gui-tablist button:hover {
   color: var(--color-ink);
 }
 .gui-tablist button[aria-selected='true'] {
-  border-bottom-color: var(--color-accent);
-  color: var(--color-ink);
+  background: var(--color-surface);
+  color: var(--color-accent-text);
+  box-shadow: 0 1px 3px var(--color-shadow);
 }
 .gui-tabpanel[hidden] {
   display: none;
 }
 .gui-accordion {
-  border-top: var(--rule);
+  display: grid;
+  gap: var(--space-2);
 }
 .gui-accordion details {
-  border-bottom: var(--rule);
+  padding-inline: var(--space-4);
+  transition: border-color var(--fast);
+}
+.gui-accordion details[open] {
+  border-color: var(--color-rule-strong);
 }
 .gui-accordion summary {
   display: flex;
@@ -725,7 +1015,7 @@
   justify-content: space-between;
   gap: var(--space-4);
   padding-block: var(--space-3);
-  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+  font-weight: 600;
   cursor: pointer;
   list-style: none;
 }
@@ -734,8 +1024,16 @@
 }
 .gui-accordion summary::after {
   content: '+';
-  font: 400 var(--text-entry) / 1 var(--font-mono);
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--color-accent-soft);
   color: var(--color-accent-text);
+  font-weight: 700;
+  line-height: 1;
   transition: rotate var(--medium) var(--ease-swing);
 }
 .gui-accordion details[open] > summary::after {
@@ -745,20 +1043,18 @@
   padding-bottom: var(--space-4);
 }
 
-/* Forms */
+/* Forms and fields */
 .gui-form {
   display: grid;
   gap: var(--space-4);
   padding: var(--space-5);
-  border: var(--rule);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
 }
 .gui-form > openui-render-node {
   display: contents;
 }
 .gui-field {
   display: grid;
+  align-content: start;
   gap: var(--space-2);
 }
 .gui-field > openui-render-node {
@@ -766,10 +1062,9 @@
   gap: var(--space-2);
 }
 .gui-field-label {
-  font: var(--type-label);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--color-ink-soft);
+  font-size: var(--text-small);
+  font-weight: 600;
+  line-height: var(--leading-text);
 }
 .gui-field-hint,
 .gui-field-error {
@@ -778,6 +1073,7 @@
   color: var(--color-ink-soft);
 }
 .gui-field-error {
+  font-weight: 600;
   color: var(--color-danger);
 }
 .gui-input {
@@ -786,8 +1082,19 @@
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-rule-strong);
   border-radius: var(--radius-md);
-  background: var(--color-bg);
+  background: var(--color-surface);
   font-size: var(--text-small);
+  transition:
+    border-color var(--fast),
+    box-shadow var(--fast);
+}
+.gui-input:hover {
+  border-color: var(--color-accent);
+}
+.gui-input:focus-visible {
+  outline: 0;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 4px var(--color-glow);
 }
 textarea.gui-input {
   resize: vertical;
@@ -816,28 +1123,222 @@ textarea.gui-input {
   flex: none;
   width: 1.125rem;
   height: 1.125rem;
-  margin: 0.2rem 0 0;
+  margin: 0.15rem 0 0;
   accent-color: var(--color-accent);
 }
 .gui-option small {
   display: block;
-  font-size: var(--text-small);
+  font-size: inherit;
   color: var(--color-ink-soft);
 }
 .gui-slider {
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  min-height: var(--control);
 }
 .gui-slider input {
   flex: 1;
+  min-width: 0;
   accent-color: var(--color-accent);
 }
 .gui-slider output {
-  min-width: 5ch;
-  font: 500 var(--text-label) / 1 var(--font-mono);
+  min-width: 4ch;
+  font-size: var(--text-small);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
+}
+/* A switch: a track of wood, a knob that crosses it and lights it orange. */
+.gui-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--control);
+  font-size: var(--text-small);
+  font-weight: 600;
+  cursor: pointer;
+}
+.gui-switch input {
+  position: absolute;
+  opacity: 0;
+}
+.gui-switch i {
+  position: relative;
+  flex: none;
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-wood);
+  transition: background var(--fast);
+}
+.gui-switch i::after {
+  content: '';
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background: var(--color-surface);
+  box-shadow: 0 1px 3px var(--color-shadow);
+  transition: translate var(--fast) var(--ease-swing);
+}
+.gui-switch input:checked + i {
+  background: var(--color-accent);
+}
+.gui-switch input:checked + i::after {
+  translate: 1.25rem 0;
+}
+.gui-switch input:focus-visible + i {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.gui-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.gui-chip-option {
+  min-height: var(--control-sm);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  font-size: var(--text-small);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--fast),
+    border-color var(--fast),
+    color var(--fast);
+}
+.gui-chip-option:hover {
+  border-color: var(--color-accent);
+}
+.gui-chip-option[aria-pressed='true'] {
+  border-color: transparent;
+  background: linear-gradient(150deg, var(--color-accent), var(--color-accent-strong));
+  color: var(--color-on-accent);
+}
+
+/* Mini-apps: a screen, a bar, a clock, a list to tick. */
+.gui-display,
+.gui-timer {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-5);
+  border: var(--rule);
+  border-radius: var(--sheet-radius);
+  background: var(--color-surface);
+}
+.gui-display {
+  justify-items: end;
+  align-content: end;
+  min-height: 5.5rem;
+}
+.gui-display .gui-label {
+  min-height: 1.5em;
+}
+.gui-display-value {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: clamp(2rem, 1.2rem + 3vw, 3rem);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-display);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gui-timer {
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+}
+.gui-timer-over .gui-display-value {
+  color: var(--color-accent-text);
+}
+.gui-progress {
+  display: grid;
+  gap: var(--space-2);
+}
+.gui-progress-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-size: var(--text-small);
+  font-weight: 600;
+  line-height: var(--leading-text);
+}
+.gui-progress-head b {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent-text);
+}
+.gui-progress-track {
+  height: 0.625rem;
+  border-radius: var(--radius-full);
+  background: var(--color-wood);
+  overflow: hidden;
+}
+.gui-progress-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-sun));
+  transition: width var(--medium) var(--ease-out);
+}
+.gui-checklist {
+  padding: var(--space-4) var(--space-5);
+}
+.gui-checklist-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+.gui-checklist li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+  border-bottom: var(--rule);
+}
+.gui-checklist li:last-child {
+  border-bottom: 0;
+}
+.gui-checklist .gui-option {
+  flex: 1;
+}
+.gui-done span {
+  color: var(--color-ink-soft);
+  text-decoration: line-through;
+}
+.gui-remove {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--control-sm);
+  height: var(--control-sm);
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--color-ink-soft);
+  font-size: var(--text-entry);
+  line-height: 1;
+  cursor: pointer;
+}
+.gui-remove:hover {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+.gui-checklist-add {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 /* Charts */
@@ -846,9 +1347,13 @@ textarea.gui-input {
   margin: 0;
   min-width: 0;
 }
+.gui-chart {
+  padding: var(--space-4) var(--space-5);
+}
 .gui-chart-title {
   margin-bottom: var(--space-2);
-  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+  font-weight: var(--weight-strong);
+  line-height: var(--leading-snug);
 }
 .gui-legend {
   display: flex;
@@ -871,12 +1376,12 @@ textarea.gui-input {
   flex: none;
   width: 0.625rem;
   height: 0.625rem;
-  border-radius: 2px;
+  border-radius: 3px;
 }
 .gui-legend b {
   margin-left: auto;
   padding-left: var(--space-4);
-  font: 500 var(--text-label) / 1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 .gui-legend-column {
   flex: 1;
@@ -902,7 +1407,7 @@ textarea.gui-input {
 }
 .gui-axis {
   fill: var(--color-ink-soft);
-  font: 500 11px var(--font-mono);
+  font: 500 12px var(--font-text);
 }
 .gui-bar,
 .gui-slice {
@@ -913,7 +1418,7 @@ textarea.gui-input {
   opacity: 0.8;
 }
 .gui-slice {
-  stroke: var(--color-bg);
+  stroke: var(--color-surface);
   stroke-width: 2;
 }
 .gui-dim {
@@ -921,7 +1426,7 @@ textarea.gui-input {
 }
 .gui-line {
   fill: none;
-  stroke-width: 2;
+  stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -929,7 +1434,7 @@ textarea.gui-input {
   opacity: 0.16;
 }
 .gui-dot {
-  stroke: var(--color-bg);
+  stroke: var(--color-surface);
   stroke-width: 2;
 }
 .gui-crosshair {
@@ -976,6 +1481,9 @@ textarea.gui-input {
   width: fit-content;
   cursor: pointer;
 }
+.gui-chart-data summary:hover {
+  color: var(--color-accent-text);
+}
 .gui-chart-data .gui-table-scroll {
   margin-top: var(--space-2);
 }
@@ -991,7 +1499,7 @@ textarea.gui-input {
 }
 .gui-pie-total {
   fill: var(--color-ink);
-  font: 400 26px var(--font-display);
+  font: 700 26px var(--font-text);
 }
 .gui-ranking {
   display: grid;
@@ -1000,6 +1508,7 @@ textarea.gui-input {
 }
 .gui-ranking dt {
   font-size: var(--text-small);
+  font-weight: 600;
   line-height: var(--leading-text);
 }
 .gui-ranking dd {
@@ -1011,17 +1520,21 @@ textarea.gui-input {
 .gui-track {
   flex: 1;
   height: 0.75rem;
+  border-radius: var(--radius-full);
+  background: var(--color-selected);
+  overflow: hidden;
 }
 .gui-track i {
   display: block;
   min-width: 2px;
   height: 100%;
-  border-radius: 0 4px 4px 0;
-  background: var(--chart-1);
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--chart-1), var(--color-sun));
 }
 .gui-ranking b {
   min-width: 4.5rem;
-  font: 500 var(--text-label) / 1 var(--font-mono);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
 }
@@ -1030,7 +1543,7 @@ textarea.gui-input {
 .gui-map-canvas {
   height: 22rem;
   border: var(--rule);
-  border-radius: var(--radius-lg);
+  border-radius: var(--sheet-radius);
   background: var(--color-wood);
   overflow: hidden;
   /* Above the map's own layers, nothing of it covers the page's menus. */
@@ -1049,12 +1562,14 @@ textarea.gui-input {
 .gui-pin {
   display: grid;
   place-items: center;
-  border: 2px solid var(--color-bg);
+  border: 2px solid var(--color-surface);
   border-radius: 50%;
-  background: var(--color-accent);
+  background: linear-gradient(150deg, var(--color-accent), var(--color-accent-strong));
   color: var(--color-on-accent);
   box-shadow: 0 2px 6px var(--color-shadow);
-  font: 500 var(--text-label) / 1 var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 700;
+  line-height: 1;
 }
 .gui-route {
   fill: none;
@@ -1072,15 +1587,17 @@ textarea.gui-input {
 .gui-map .leaflet-popup-content-wrapper {
   border-radius: var(--radius-md);
 }
-.gui-map .leaflet-popup-content {
+.gui-map .leaflet-popup-content > div {
   display: grid;
   gap: 2px;
+}
+.gui-map .leaflet-popup-content {
   margin: var(--space-3) var(--space-4);
   font-size: var(--text-small);
   line-height: var(--leading-text);
 }
 .gui-map .leaflet-popup-content strong {
-  font: 400 var(--text-entry) / var(--leading-snug) var(--font-display);
+  font-weight: var(--weight-strong);
 }
 .gui-map .leaflet-container a.leaflet-popup-close-button {
   color: var(--color-ink-soft);
@@ -1102,7 +1619,7 @@ textarea.gui-input {
 .gui-map .leaflet-control-attribution {
   background: color-mix(in srgb, var(--color-raised) 85%, transparent);
   color: var(--color-ink-soft);
-  font: 500 var(--text-label) / 1.6 var(--font-mono);
+  font-size: var(--text-label);
 }
 .gui-map .leaflet-control-attribution a {
   color: inherit;
@@ -1116,36 +1633,44 @@ textarea.gui-input {
   grid-template-columns: auto 1fr;
   column-gap: var(--space-3);
   width: 100%;
-  padding: var(--space-2) 0;
+  padding: var(--space-2);
   border: 0;
-  border-bottom: var(--rule);
+  border-radius: var(--radius-md);
   background: none;
   text-align: left;
   cursor: pointer;
+  transition: background var(--fast);
 }
 .gui-map-places .gui-list-text {
   grid-column: 2;
 }
-.gui-map-places button:hover .gui-list-title {
-  color: var(--color-accent-text);
+.gui-map-places button:hover {
+  background: var(--color-selected);
 }
 .gui-pin-number {
   display: grid;
   place-items: center;
   width: 1.5rem;
   height: 1.5rem;
-  margin-top: 0.15rem;
+  margin-top: 0.1rem;
   border-radius: 50%;
-  background: var(--color-accent);
+  background: linear-gradient(150deg, var(--color-accent), var(--color-accent-strong));
   color: var(--color-on-accent);
-  font: 500 var(--text-label) / 1 var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 700;
+  line-height: 1;
 }
 
 @media (max-width: 40rem) {
-  .gui-form {
+  .gui-form,
+  .gui-panel {
     padding: var(--space-4);
   }
   .gui-map-canvas {
     height: 18rem;
+  }
+  /* Past four columns a grid does not fit a phone: it folds to two. */
+  .gui-cols-wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -10,7 +10,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { RenderNode } from '@openuidev/angular-lang';
+import { RenderNode, isReactiveAssign, resolveStateField } from '@openuidev/angular-lang';
 import { Block, childProps, strings } from '../block';
 
 const OnPush = ChangeDetectionStrategy.OnPush;
@@ -135,11 +135,14 @@ export class FormControl extends Block<{ label: string; input: unknown; hint: st
 interface FieldProps {
   name: string;
   rules: Rules;
+  /** A `$variable` the field reads and writes, when the model bound one. */
+  value: unknown;
 }
 
 /**
- * A field of the catalogue. Its value lives in the renderer's store, under the name of
- * its form, which is where a button finds it to send it with its message.
+ * A field of the catalogue. Its value lives in the renderer's store: under the name of
+ * its form, which is where a button finds it to send it with its message, and in the
+ * `$variable` it is bound to, if any, which every expression of the reply reads.
  */
 @Directive()
 abstract class Field<P extends FieldProps, V> extends Block<P> {
@@ -147,9 +150,17 @@ abstract class Field<P extends FieldProps, V> extends Block<P> {
   private readonly form = inject(FormScope, { optional: true });
 
   protected readonly name = computed(() => this.props()?.name ?? '');
-  protected readonly stored = computed(
-    () => this.ui.getFieldValue(this.formName, this.name()) as V | undefined,
-  );
+  private readonly binding = computed(() => {
+    const value = this.props()?.value;
+    return isReactiveAssign(value) ? value : null;
+  });
+  protected readonly stored = computed(() => {
+    const binding = this.binding();
+    const value = binding
+      ? this.ui.getFieldValue(undefined, binding.target)
+      : this.ui.getFieldValue(this.formName, this.name());
+    return (value ?? undefined) as V | undefined;
+  });
   protected readonly error = computed(() => this.form?.errors()[this.name()] ?? null);
 
   /** What the field holds before the user touches it; undefined for nothing. */
@@ -162,9 +173,9 @@ abstract class Field<P extends FieldProps, V> extends Block<P> {
     // Once the reply is complete, the field's first value is stored like a typed one.
     effect(() => {
       const name = this.name();
-      const initial = this.initial();
-      if (name && initial !== undefined && !this.ui.isStreaming && this.stored() === undefined) {
-        untracked(() => this.ui.setFieldValue(this.formName, this.type, name, initial, false));
+      const initial = this.stored() ?? this.initial();
+      if (name && initial !== undefined && !this.ui.isStreaming) {
+        untracked(() => this.write(initial, false));
       }
     });
     effect((onCleanup) => {
@@ -180,13 +191,42 @@ abstract class Field<P extends FieldProps, V> extends Block<P> {
   }
 
   protected set(value: V): void {
-    this.ui.setFieldValue(this.formName, this.type, this.name(), value);
+    this.write(value, true);
     this.form?.recheck(this.name());
+  }
+
+  /** Stores a value where it is read from: the bound variable, and the form if any. */
+  private write(value: V, typed: boolean): void {
+    const binding = this.binding();
+    if (binding && this.ui.getFieldValue(undefined, binding.target) !== value) {
+      resolveStateField(
+        this.name(),
+        binding,
+        this.ui.store,
+        this.ui.evaluationContext,
+        () => undefined,
+        () => undefined,
+      ).setValue(value);
+    }
+    const inForm = this.ui.getFieldValue(this.formName, this.name());
+    if ((!binding || this.formName) && !same(inForm, value)) {
+      this.ui.setFieldValue(this.formName, this.type, this.name(), value, typed);
+    }
   }
 
   protected text(event: Event): string {
     return (event.target as HTMLInputElement).value;
   }
+}
+
+function same(a: unknown, b: unknown): boolean {
+  return a === b || (Array.isArray(a) && Array.isArray(b) && a.join('\u0000') === b.join('\u0000'));
+}
+
+/** What was typed in a number field, as a number when it is one. */
+export function toNumber(text: string): number | string {
+  const number = Number(text.trim().replace(',', '.'));
+  return text.trim() !== '' && Number.isFinite(number) ? number : text;
 }
 
 const ERROR = `@if (error(); as error) {
@@ -201,15 +241,37 @@ const ERROR = `@if (error(); as error) {
       [type]="p.type ?? 'text'"
       [name]="name()"
       [placeholder]="p.placeholder ?? ''"
-      [value]="stored() ?? ''"
+      [value]="shown()"
       [attr.aria-invalid]="error() ? 'true' : null"
       [attr.inputmode]="p.type === 'number' ? 'decimal' : null"
-      (input)="set(text($event))"
+      (input)="onInput($event)"
+      (blur)="draft.set(null)"
     />
     ${ERROR}`,
 })
-export class Input extends Field<FieldProps & { placeholder: string; type: string }, string> {
+export class Input extends Field<
+  FieldProps & { placeholder: string; type: string },
+  string | number
+> {
   protected readonly type = 'Input';
+  /** What is being typed: "1." is kept as typed although it is stored as 1. */
+  protected readonly draft = signal<string | null>(null);
+  protected readonly shown = computed(() => {
+    const stored = this.stored();
+    const draft = this.draft();
+    return draft !== null && this.read(draft) === stored ? draft : (stored ?? '');
+  });
+
+  /** A number field gives a number, so that expressions can compute with it. */
+  private read(text: string): string | number {
+    return this.p.type === 'number' ? toNumber(text) : text;
+  }
+
+  protected onInput(event: Event): void {
+    const text = this.text(event);
+    this.draft.set(text);
+    this.set(this.read(text));
+  }
 }
 
 @Component({
@@ -384,4 +446,44 @@ export class Slider extends Field<
 })
 export class DatePicker extends Field<FieldProps, string> {
   protected readonly type = 'DatePicker';
+}
+
+@Component({
+  changeDetection: OnPush,
+  selector: 'gui-switch',
+  template: `<label class="gui-switch">
+    <input
+      type="checkbox"
+      role="switch"
+      [name]="name()"
+      [checked]="stored() === true"
+      (change)="set(!stored())"
+    />
+    <i aria-hidden="true"></i>
+    <span>{{ p.label }}</span>
+  </label>`,
+})
+export class Switch extends Field<FieldProps & { label: string }, boolean> {
+  protected readonly type = 'Switch';
+}
+
+@Component({
+  changeDetection: OnPush,
+  selector: 'gui-chips',
+  template: `<div class="gui-chips" role="group" [attr.aria-label]="name()">
+    @for (option of options(); track $index) {
+      <button
+        type="button"
+        class="gui-chip-option"
+        [attr.aria-pressed]="option === stored()"
+        (click)="set(option)"
+      >
+        {{ option }}
+      </button>
+    }
+  </div>`,
+})
+export class Chips extends Field<FieldProps & { options: string[] }, string> {
+  protected readonly type = 'Chips';
+  protected readonly options = computed(() => strings(this.props()?.options));
 }
