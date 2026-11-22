@@ -34,7 +34,7 @@
     }
     @for (message of store.messages(); track $index) {
       <article class="message" [class]="message.role" [class.error]="message.error">
-        <span class="who">{{ message.role === 'user' ? 'Vous' : 'Claude' }}</span>
+        <span class="who">{{ message.role === 'user' ? 'Vous' : 'Agent' }}</span>
         @if (message.content) {
           <p>{{ message.content }}</p>
         } @else if (store.streaming() && $last) {
@@ -63,7 +63,7 @@
     @if (store.streaming()) {
       <button type="button" class="stop" (click)="store.stop()">Arrêter</button>
     } @else {
-      <button type="submit" [disabled]="!draft().trim()">Envoyer</button>
+      <button type="submit" [disabled]="!draft().trim() || store.loading()">Envoyer</button>
     }
   </form>
 </section>

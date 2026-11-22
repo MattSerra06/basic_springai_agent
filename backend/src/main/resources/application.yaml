@@ -2,12 +2,13 @@ spring:
   application:
     name: agent-backend
   ai:
-    anthropic:
-      # Never commit a key: export ANTHROPIC_API_KEY before starting the app.
-      api-key: ${ANTHROPIC_API_KEY}
+    openai:
+      # Never commit a key: export OPENAI_API_KEY before starting the app.
+      api-key: ${OPENAI_API_KEY}
       chat:
-        model: claude-opus-5-5
-        max-tokens: 64000
+        model: gpt-6.1-sol
+      # The starter also provides a DecisionModel bean (OpenAI Decisions API);
+      # its model is set with spring.ai.openai.decision.model.
     session:
       repository:
         jdbc:
@@ -20,6 +21,9 @@ spring:
     password:
 
 server:
+  # The API has no authentication yet: it only answers on this machine.
+  # Remove this line only once access to it is protected.
+  address: 127.0.0.1
   port: 8080
 
 agent:

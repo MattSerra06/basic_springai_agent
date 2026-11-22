@@ -63,7 +63,7 @@ export class Chat {
 
   protected send(): void {
     const text = this.draft();
-    if (!text.trim() || this.store.streaming()) {
+    if (!text.trim() || this.store.streaming() || this.store.loading()) {
       return;
     }
     this.draft.set('');

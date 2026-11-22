@@ -15,6 +15,10 @@ export class ChatStore {
 
   /** Stops following the run of the open conversation. */
   private unwatch?: () => void;
+  /** The request that starts a run is in flight: there is no run to stop yet. */
+  private starting = false;
+  /** A stop was asked for while the run was being started. */
+  private stopWhenStarted = false;
   /** Bumped when another conversation is opened, so what was pending for the old one is dropped. */
   private view = 0;
 
@@ -66,10 +70,11 @@ export class ChatStore {
       }
       return true;
     } catch (error) {
-      if (view === this.view) {
-        this.activeId.set(null);
-        this.problem.set(`Impossible d'ouvrir cette conversation. ${reason(error)}`);
+      if (view !== this.view) {
+        return true; // another conversation was opened meanwhile: nothing to report
       }
+      this.activeId.set(null);
+      this.problem.set(`Impossible d'ouvrir cette conversation. ${reason(error)}`);
       return false;
     } finally {
       if (view === this.view) {
@@ -79,16 +84,18 @@ export class ChatStore {
   }
 
   /**
-   * Sends a message to the open conversation and streams the reply into it.
+   * Sends a message to the open conversation and streams the reply into it. Ignored
+   * while a reply is being generated or the conversation is still loading.
    * @param onSessionCreated called when the message started a new conversation
    */
   async send(text: string, onSessionCreated?: (session: Session) => void): Promise<void> {
     const message = text.trim();
-    if (!message || this.streaming()) {
+    if (!message || this.streaming() || this.loading()) {
       return;
     }
 
     const view = this.view;
+    const sessionId = this.activeId();
     this.problem.set(null);
     this.messages.update((all) => [
       ...all,
@@ -96,15 +103,23 @@ export class ChatStore {
       { role: 'assistant', content: '' },
     ]);
     this.streaming.set(true);
+    this.starting = true;
+    this.stopWhenStarted = false;
 
     try {
-      const started = await this.api.start(message, this.activeId());
+      const started = await this.api.start(message, sessionId);
+      if (sessionId === null) {
+        // The conversation exists from now on, wherever the user has gone meanwhile.
+        this.sessions.update((all) => [started.session, ...all]);
+      }
+      if (this.stopWhenStarted) {
+        void this.api.interrupt(started.session.id).catch(() => undefined);
+      }
       if (view !== this.view) {
         return; // another conversation was opened meanwhile; the run goes on without us
       }
-      if (this.activeId() === null) {
+      if (sessionId === null) {
         this.activeId.set(started.session.id);
-        this.sessions.update((all) => [started.session, ...all]);
         onSessionCreated?.(started.session);
       }
       this.follow(started.runId);
@@ -113,16 +128,26 @@ export class ChatStore {
         this.updateReply((reply) => ({ ...reply, content: reason(error), error: true }));
         this.streaming.set(false);
       }
+    } finally {
+      this.starting = false;
     }
   }
 
   /**
    * Stops the reply in progress. The backend ends the run itself, with what was
-   * generated so far stored in the conversation, and says so on the event stream.
+   * generated so far stored in the conversation, and says so on the event stream. A
+   * stop asked for before the run exists is sent as soon as it does.
    */
   async stop(): Promise<void> {
+    if (!this.streaming()) {
+      return;
+    }
+    if (this.starting) {
+      this.stopWhenStarted = true;
+      return;
+    }
     const sessionId = this.activeId();
-    if (!this.streaming() || sessionId === null) {
+    if (sessionId === null) {
       return;
     }
     try {
@@ -148,13 +173,20 @@ export class ChatStore {
     this.sessions.update((all) => all.filter((session) => session.id !== sessionId));
   }
 
-  /** Streams a run into the last message, which is the reply's placeholder. */
-  private follow(runId: string): void {
-    const sessionId = this.activeId();
+  /**
+   * Streams a run into the last message, which is the reply's placeholder.
+   * @param losses how many times in a row the stream of this run was lost without
+   * delivering anything
+   */
+  private follow(runId: string, losses = 0): void {
+    const sessionId = this.activeId()!;
     const view = this.view;
     this.streaming.set(true);
     this.unwatch = this.api.watch(runId, {
-      text: (text) => this.updateReply((reply) => ({ ...reply, content: reply.content + text })),
+      text: (text) => {
+        losses = 0;
+        this.updateReply((reply) => ({ ...reply, content: reply.content + text }));
+      },
       done: (interrupted) => {
         if (interrupted) {
           this.updateReply((reply) => ({ ...reply, interrupted: true }));
@@ -165,21 +197,40 @@ export class ChatStore {
         this.updateReply((reply) => ({ ...reply, content: message, error: true }));
         this.detach();
       },
-      lost: async () => {
-        // The backend no longer serves this run: show what the conversation has stored.
-        this.detach();
-        try {
-          const conversation = await this.api.conversation(sessionId!);
-          if (view === this.view) {
-            this.messages.set(conversation.messages);
-          }
-        } catch (error) {
-          if (view === this.view) {
-            this.problem.set(`Le flux de la réponse a été perdu. ${reason(error)}`);
-          }
-        }
-      },
+      lost: () => void this.recover(sessionId, view, losses + 1),
     });
+  }
+
+  /**
+   * The event stream of a run is gone for good, e.g. a proxy answered an error to a
+   * reconnection, or the backend no longer knows the run. Shows what the conversation
+   * has stored and, when the run is still going, follows it again from its start.
+   */
+  private async recover(sessionId: string, view: number, losses: number): Promise<void> {
+    this.detach();
+    try {
+      if (losses > 1) {
+        await new Promise((resolve) => setTimeout(resolve, RECOVERY_DELAY_MS));
+      }
+      const conversation = await this.api.conversation(sessionId);
+      if (view !== this.view) {
+        return;
+      }
+      this.messages.set(conversation.messages);
+      if (!conversation.activeRunId) {
+        return;
+      }
+      if (losses > MAX_LOSSES) {
+        this.problem.set('Le flux de la réponse a été perdu. Rechargez la page pour la retrouver.');
+        return;
+      }
+      this.messages.update((all) => [...all, { role: 'assistant', content: '' }]);
+      this.follow(conversation.activeRunId, losses);
+    } catch (error) {
+      if (view === this.view) {
+        this.problem.set(`Le flux de la réponse a été perdu. ${reason(error)}`);
+      }
+    }
   }
 
   /** Stops following the run of the open conversation, if any. */
@@ -195,6 +246,10 @@ export class ChatStore {
     );
   }
 }
+
+/** How many times in a row a run is followed again after its stream was lost. */
+const MAX_LOSSES = 3;
+const RECOVERY_DELAY_MS = 1000;
 
 function reason(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

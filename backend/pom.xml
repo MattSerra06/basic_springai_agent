@@ -10,7 +10,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.example</groupId>
+    <groupId>io.github.mattserra06</groupId>
     <artifactId>agent-backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>agent-backend</name>
@@ -45,7 +45,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-anthropic</artifactId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
         </dependency>
         <!-- Sessions: event log, history advisors, compaction, conversation_search, JDBC store -->
         <dependency>

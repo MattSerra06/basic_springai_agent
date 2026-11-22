@@ -2,7 +2,7 @@
 
 Monorepo d'un agent conversationnel en streaming :
 
-- `backend/` — Spring Boot 4.2 + Spring AI 2.1 (`ChatClient`), modèle Claude via l'API Anthropic
+- `backend/` — Spring Boot 4.2 + Spring AI 2.1 (`ChatClient`), modèle OpenAI
 - `frontend/` — Angular 22, UI de chat avec le menu des conversations à gauche
 
 ## Fonctionnalités
@@ -27,7 +27,7 @@ Monorepo d'un agent conversationnel en streaming :
 
 - Java 21+
 - Node.js 22+
-- Une clé API Anthropic
+- Une clé API OpenAI
 
 ## Lancer en local
 
@@ -35,7 +35,7 @@ Backend (port 8080) :
 
 ```bash
 cd backend
-export ANTHROPIC_API_KEY=sk-ant-...
+export OPENAI_API_KEY=sk-...
 ./mvnw spring-boot:run
 ```
 
@@ -58,15 +58,23 @@ Tout est dans `backend/src/main/resources/application.yaml` :
 
 | Propriété | Rôle |
 | --- | --- |
-| `spring.ai.anthropic.api-key` | Clé API, lue depuis `ANTHROPIC_API_KEY` |
-| `spring.ai.anthropic.chat.model` | Modèle Claude (`claude-opus-5-5` par défaut) |
-| `spring.ai.anthropic.chat.max-tokens` | Plafond de tokens de sortie par réponse |
+| `spring.ai.openai.api-key` | Clé API, lue depuis `OPENAI_API_KEY` |
+| `spring.ai.openai.chat.model` | Modèle de chat (`gpt-6.1-sol` par défaut) |
+| `spring.ai.openai.decision.model` | Modèle du `DecisionModel` fourni par le starter (API Decisions d'OpenAI) |
+| `server.address` | Interface d'écoute : `127.0.0.1`, voir « Sécurité » |
 | `spring.datasource.url` | Base des sessions (H2 fichier ; PostgreSQL, MySQL et SQL Server sont aussi supportés par Spring AI Session) |
 | `agent.system-prompt` | Prompt système de l'agent |
 | `agent.user` | Propriétaire des conversations (pas d'authentification pour l'instant) |
 | `agent.stream-heartbeat` | Intervalle des lignes de keep-alive sur le flux quand le modèle est silencieux (à garder sous le délai d'inactivité des proxys) |
 | `agent.compaction.trigger-tokens` | Taille estimée de la conversation qui déclenche une compaction |
 | `agent.compaction.keep-tokens` | Part récente de la conversation gardée telle quelle après compaction |
+
+## Sécurité
+
+L'API n'a pas encore d'authentification : n'importe qui pouvant la joindre peut lire et
+supprimer les conversations, et faire appeler le modèle avec la clé configurée. Le
+backend n'écoute donc que sur `127.0.0.1` (`server.address`). Ne retirer ce réglage
+qu'une fois l'accès protégé (clé d'API ou login).
 
 ## Comment ça marche
 
@@ -99,7 +107,9 @@ Le worker (`ChatService`) passe par ces advisors du `ChatClient` :
 
 Un arrêt (`POST /api/sessions/{id}/interrupt`) coupe aussi le flux du modèle, ce qui
 ferme l'appel, puis la partie déjà produite de la réponse est enregistrée. Fermer la
-page n'arrête pas un run : seul cet appel le fait.
+page n'arrête pas un run : seul cet appel le fait. Un tour arrêté alors qu'il attend
+encore la compaction du précédent n'appelle pas le modèle, et son message reste dans
+la conversation.
 
 Une fois la réponse terminée, la session est compactée si nécessaire
 (`SessionCompactor`). Le message suivant est accepté tout de suite, mais son tour attend
