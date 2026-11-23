@@ -154,3 +154,8 @@
     background-position: 100% 0;
   }
 }
+
+/* The thread may be wide; a line of prose is not. */
+.assistant > p {
+  max-width: var(--measure);
+}

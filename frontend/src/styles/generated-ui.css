@@ -71,7 +71,7 @@
 /* Text */
 .gui-heading {
   margin: var(--space-3) 0 0;
-  font-size: var(--text-brand);
+  font-size: calc(var(--text-entry) * 1.2);
   font-weight: var(--weight-strong);
   line-height: var(--leading-snug);
   letter-spacing: var(--tracking-display);
@@ -81,10 +81,12 @@
   margin-top: 0;
 }
 .gui-heading-sub {
-  font-size: var(--text-entry);
+  font-size: calc(var(--text-body) * 1.125);
   letter-spacing: 0;
 }
 .gui-text {
+  /* The page may be wide; a line of prose is not. */
+  max-width: var(--measure);
   margin: 0;
   overflow-wrap: anywhere;
   text-wrap: pretty;
@@ -98,7 +100,7 @@
   font-weight: var(--weight-strong);
 }
 .gui-text-lead {
-  font-size: var(--text-entry);
+  font-size: calc(var(--text-body) * 1.125);
   font-weight: 500;
   line-height: var(--leading-text);
 }
@@ -214,7 +216,7 @@
 }
 .gui-quote blockquote {
   margin: 0 0 var(--space-2);
-  font-size: var(--text-entry);
+  font-size: calc(var(--text-body) * 1.125);
   font-weight: 500;
   line-height: var(--leading-text);
   text-wrap: balance;
@@ -804,7 +806,7 @@
 }
 .gui-card-title {
   margin: 0;
-  font-size: var(--text-entry);
+  font-size: calc(var(--text-body) * 1.125);
   font-weight: var(--weight-strong);
   line-height: var(--leading-snug);
 }
@@ -823,7 +825,7 @@
 }
 .gui-panel-title {
   margin: 0 0 var(--space-4);
-  font-size: var(--text-entry);
+  font-size: calc(var(--text-body) * 1.125);
   font-weight: var(--weight-strong);
   line-height: var(--leading-snug);
 }
@@ -1410,7 +1412,9 @@ textarea.gui-input {
   margin: 0;
   min-width: 0;
 }
+/* A chart is drawn to scale: left to fill a wide page it would tower over the text. */
 .gui-chart {
+  max-width: 52rem;
   padding: var(--space-4) var(--space-5);
 }
 .gui-chart-title {
