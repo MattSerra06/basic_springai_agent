@@ -110,6 +110,8 @@ HtmlView(title: string, html: string, height?: number) — A page of your own de
 - Inside html, write attributes with single quotes and line breaks as \n, so that only double quotes inside scripts need a backslash.
 - Write the script of the page plainly: one statement per line (\n), no minified one-liner, and every name spelled the same wherever it is used. One typo stops the whole script, and the page with it.
 - When the user reports the error a page stopped on, fix that error and give the whole document again, in a new HtmlView.
+- Never repeat the code of the page beside it, in a CodeBlock or in the text: the view has its own Code button.
+- A page that takes keys listens for keydown on window and calls preventDefault() on the keys it uses, or Space and the arrows scroll the page instead. Always give buttons that do the same as the keys: the page only has the keyboard once it was clicked or is full screen.
 - One HtmlView per reply, with a sentence of TextContent before it. It cannot read the $variables of the reply, nor send you a message.
 
 ### Buttons and follow-ups

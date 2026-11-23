@@ -91,6 +91,18 @@ view = HtmlView("Nuancier", "<!doctype html><style>body{background:#0b1d3a}</sty
       expect(el().querySelector('.gui-html')!.classList).not.toContain('gui-html-full');
     });
 
+    it('hands the keyboard to the page when it goes full screen', async () => {
+      await draw(page);
+
+      const toggle = button('Plein écran');
+      toggle.focus();
+      toggle.click();
+      await settle();
+
+      // Left on the button, Space would press it again and the page would hear no key
+      expect(document.activeElement).toBe(el().querySelector('iframe'));
+    });
+
     it('puts back a page that leaves the view, and stops one that keeps leaving', async () => {
       await draw(page);
       // Once the page is stopped there is no frame left to load

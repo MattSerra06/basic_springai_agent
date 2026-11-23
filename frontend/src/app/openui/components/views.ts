@@ -425,6 +425,8 @@ export class HtmlView extends Block<{ title: string; html: string; height: numbe
   /** How many times the frame of this version has loaded: once is the page itself. */
   private loads = 0;
   private restarts = 0;
+  /** The page drawn next is given the keyboard once it has loaded. */
+  private wantsKeyboard = false;
 
   constructor() {
     super();
@@ -449,6 +451,10 @@ export class HtmlView extends Block<{ title: string; html: string; height: numbe
       return;
     }
     if (++this.loads < 2) {
+      if (this.wantsKeyboard) {
+        this.wantsKeyboard = false;
+        this.giveKeyboard();
+      }
       return;
     }
     // A second load is the page going elsewhere, or reloading itself.
@@ -464,7 +470,17 @@ export class HtmlView extends Block<{ title: string; html: string; height: numbe
     this.restarts = 0;
     this.left.set(false);
     this.stopped.set(false);
+    // Asked for by the user, who goes back to the page: it takes the keyboard again
+    this.wantsKeyboard = true;
     this.redraw();
+  }
+
+  /**
+   * Hands the keyboard to the page. Without it the keys stay with the button just
+   * clicked: a game hears nothing, and Space presses that button again.
+   */
+  private giveKeyboard(): void {
+    this.frame().nativeElement.querySelector('iframe')?.focus();
   }
 
   private redraw(): void {
@@ -503,11 +519,15 @@ export class HtmlView extends Block<{ title: string; html: string; height: numbe
       return;
     }
     this.full.set(true);
+    // At once, and again once the browser has answered: it may take its time to, or
+    // never do, and going full screen can move the focus back.
+    this.giveKeyboard();
     try {
       await this.frame().nativeElement.requestFullscreen();
     } catch {
       this.cover(true);
     }
+    this.giveKeyboard();
   }
 
   private leaveFull(): void {

@@ -223,6 +223,8 @@
 }
 
 .gui-codeblock {
+  min-width: 0; /* in a row, it shrinks and its lines scroll rather than push the row out */
+  max-width: 100%;
   margin: 0;
   border: var(--rule);
   border-radius: var(--sheet-radius);
@@ -1065,6 +1067,8 @@
 }
 .gui-accordion {
   display: grid;
+  /* Not wider than the reply, whatever a section holds: a long line of code scrolls in its block. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
 }
 .gui-accordion details {
@@ -2108,6 +2112,14 @@ textarea.gui-input {
   flex: 1;
   min-width: 12rem;
   overflow-wrap: anywhere;
+}
+/*
+ * While a view covers the window without the browser's own full screen, the thread that
+ * holds it goes over the composer of the chat (.scroll is the thread's scroller, which
+ * keeps what it holds in a layer of its own).
+ */
+.scroll:has(.gui-html-full) {
+  z-index: 2;
 }
 /* Full screen: the whole window, whether the browser gave its own or not. */
 .gui-html-full {
