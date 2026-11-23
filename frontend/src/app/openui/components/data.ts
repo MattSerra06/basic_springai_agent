@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { Block, asArray, childProps, objects, strings } from '../block';
 import { InlineText } from '../inline';
 
@@ -19,12 +19,29 @@ const OnPush = ChangeDetectionStrategy.OnPush;
         <thead>
           <tr>
             @for (header of headers(); track $index) {
-              <th scope="col" [class.gui-num]="numeric()[$index]">{{ header }}</th>
+              <th
+                scope="col"
+                [class.gui-num]="numeric()[$index]"
+                [attr.aria-sort]="
+                  sort()?.column === $index
+                    ? sort()!.descending
+                      ? 'descending'
+                      : 'ascending'
+                    : null
+                "
+              >
+                <button type="button" class="gui-sort" (click)="sortBy($index)">
+                  {{ header }}
+                  <span aria-hidden="true">{{
+                    sort()?.column === $index ? (sort()!.descending ? '↓' : '↑') : ''
+                  }}</span>
+                </button>
+              </th>
             }
           </tr>
         </thead>
         <tbody>
-          @for (row of rows(); track $index) {
+          @for (row of sorted(); track $index) {
             <tr>
               @for (cell of row; track $index) {
                 <td [class.gui-num]="numeric()[$index]">
@@ -52,6 +69,35 @@ export class Table extends Block<{ headers: string[]; rows: unknown[][]; caption
       .filter(Array.isArray)
       .map((row) => row as unknown[]),
   );
+  /** The column the reader sorted by, if any: a click on a header, a second one reverses. */
+  protected readonly sort = signal<{ column: number; descending: boolean } | null>(null);
+  protected readonly sorted = computed(() => {
+    const sort = this.sort();
+    if (!sort) {
+      return this.rows();
+    }
+    const compare = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare;
+    return [...this.rows()].sort((a, b) => {
+      const [left, right] = [a[sort.column], b[sort.column]];
+      const order =
+        typeof left === 'number' && typeof right === 'number'
+          ? left - right
+          : compare(String(left ?? ''), String(right ?? ''));
+      return sort.descending ? -order : order;
+    });
+  });
+
+  protected sortBy(column: number): void {
+    const sort = this.sort();
+    this.sort.set(
+      sort?.column !== column
+        ? { column, descending: false }
+        : sort.descending
+          ? null
+          : { column, descending: true },
+    );
+  }
+
   /** A column of numbers is set flush right, in tabular figures. */
   protected readonly numeric = computed(() => {
     const rows = this.rows();

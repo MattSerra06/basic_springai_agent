@@ -20,6 +20,7 @@ import {
 } from './components/forms';
 import { Accordion, Grid, Panel, Part, Response, Stack, Tabs } from './components/layout';
 import { MapBlock } from './components/map';
+import { Carousel, Columns, Hero, HtmlView, Wizard } from './components/views';
 import {
   Callout,
   CodeBlock,
@@ -83,6 +84,11 @@ const renderers: Record<string, Type<unknown>> = {
   Stack,
   Grid,
   Panel,
+  Columns,
+  Hero,
+  Wizard,
+  Carousel,
+  HtmlView,
   Tabs,
   Accordion,
 };

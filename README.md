@@ -133,6 +133,27 @@ l'agent appelle déjà.
 | Mise en page | `Stack`, `Grid`, `Panel`, `Tabs`, `Accordion` : les conteneurs s'emboîtent |
 | Formulaires et champs | `Form`, `Input`, `TextArea`, `Select`, `RadioGroup`, `CheckBoxGroup`, `Slider`, `DatePicker`, `Switch`, `Chips` |
 | Mini-applications | `Display`, `Progress`, `Timer`, `Checklist` |
+| Compositions | `Hero` (bandeau), `Columns` (colonnes de largeurs inégales), `Wizard` (parcours en étapes), `Carousel`, et le ton d'un `Panel` (cadre, papier, bois, orange) |
+| HTML libre | `HtmlView` : une page écrite par le modèle, dans un cadre isolé, affichable en plein écran |
+
+### HTML libre
+
+`HtmlView` affiche une page HTML que le modèle a écrite : une maquette, une affiche, un
+petit jeu. Ce HTML ne vient pas de nous, il est donc traité comme celui d'un inconnu.
+
+- **Isolé de l'app** : la page vit dans une `<iframe sandbox="allow-scripts">`, donc dans
+  une origine à elle. Ses scripts tournent, mais ne peuvent ni lire la page de l'app, ses
+  cookies ou son stockage, ni appeler son API, ni ouvrir une fenêtre, ni envoyer un
+  formulaire, ni faire naviguer l'app.
+- **Sans réseau** : une politique de sécurité (CSP) est écrite en tête du document, avant
+  tout ce que le modèle a écrit. Aucune requête ne sort : pas de `fetch`, pas de script,
+  de feuille de style, de police ni d'image par URL. Tout doit être en ligne dans la page.
+- **Pas pendant l'écriture** : la page n'est dessinée qu'une fois la réponse complète.
+- **Une limite** : un cadre peut se faire naviguer lui-même vers une autre adresse, ce que
+  ni le bac à sable ni la CSP n'interdisent. C'est détecté et la page est remise, mais
+  une requête est partie entre-temps, avec ce que la page contenait seulement.
+- **Plein écran** : le bouton demande le plein écran du navigateur ; s'il est refusé, la
+  vue couvre la fenêtre. Échap ou le bouton en sortent, sans recharger la page.
 
 ### Mini-applications
 

@@ -218,7 +218,7 @@ export class Grid extends Block<{ children: unknown; columns: number; gap: strin
   changeDetection: OnPush,
   imports: [RenderNode],
   selector: 'gui-panel',
-  template: `<section class="gui-panel">
+  template: `<section class="gui-panel" [class]="'gui-panel-' + (p.tone ?? 'frame')">
     @if (p.title) {
       <h3 class="gui-panel-title">{{ p.title }}</h3>
     }
@@ -227,7 +227,7 @@ export class Grid extends Block<{ children: unknown; columns: number; gap: strin
     </div>
   </section>`,
 })
-export class Panel extends Block<{ children: unknown; title: string }> {}
+export class Panel extends Block<{ children: unknown; title: string; tone: string }> {}
 
 /** For the components a parent draws itself from their arguments: Series, Tab, Step… */
 @Component({ changeDetection: OnPush, selector: 'gui-part', template: '' })

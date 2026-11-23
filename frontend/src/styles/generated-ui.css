@@ -1737,3 +1737,398 @@ textarea.gui-input {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* A table sorts by the column whose head is clicked. */
+.gui-sort {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.gui-sort:hover {
+  color: var(--color-accent-text);
+}
+.gui-sort span {
+  min-width: 0.75em;
+  color: var(--color-accent-text);
+}
+
+/* The materials a panel can be made of, besides a frame on the page. */
+.gui-panel-paper {
+  border: var(--rule);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-field);
+}
+.gui-panel-wood {
+  border: 0;
+  background:
+    repeating-linear-gradient(
+      92deg,
+      transparent 0 7px,
+      var(--color-wood-grain) 7px 8px,
+      transparent 8px 19px
+    ),
+    var(--color-wood);
+}
+.gui-panel-accent {
+  border: 0;
+  background: var(--color-accent-soft);
+}
+.gui-panel-accent > .gui-panel-title {
+  color: var(--color-accent-text);
+}
+
+/* A banner: one statement, on the orange of a message, on oak or on paper. */
+.gui-hero {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  border-radius: var(--sheet-radius);
+}
+.gui-hero > openui-render-node {
+  display: contents;
+}
+.gui-hero p {
+  margin: 0;
+}
+.gui-hero-kicker {
+  font-size: var(--text-small);
+  font-weight: 700;
+  line-height: var(--leading-text);
+}
+.gui-hero-title {
+  margin: 0;
+  max-width: 22ch;
+  font-size: var(--text-brand);
+  font-weight: 700;
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-display);
+  text-wrap: balance;
+}
+.gui-hero-text {
+  max-width: 34rem;
+  line-height: var(--leading-text);
+}
+.gui-hero .gui-buttons {
+  margin-top: var(--space-2);
+}
+.gui-hero-accent {
+  background: linear-gradient(150deg, var(--color-accent), var(--color-accent-strong));
+  box-shadow: var(--shadow-field);
+  color: var(--color-on-accent);
+}
+/* On orange the button to press is the paper one. */
+.gui-hero-accent .gui-btn-primary {
+  background: var(--color-on-accent);
+  box-shadow: none;
+  color: var(--color-accent-text);
+}
+.gui-hero-accent .gui-btn-secondary,
+.gui-hero-accent .gui-btn-ghost {
+  border-color: currentColor;
+  background: transparent;
+  color: var(--color-on-accent);
+}
+.gui-hero-wood {
+  background:
+    repeating-linear-gradient(
+      92deg,
+      transparent 0 7px,
+      var(--color-wood-grain) 7px 8px,
+      transparent 8px 19px
+    ),
+    var(--color-wood);
+}
+.gui-hero-wood .gui-hero-kicker,
+.gui-hero-paper .gui-hero-kicker {
+  color: var(--color-accent-text);
+}
+.gui-hero-paper {
+  border: var(--rule);
+  background: var(--color-surface);
+}
+
+/* Columns of unequal widths; on a phone they stack. */
+.gui-columns {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+.gui-columns > .gui {
+  min-width: 0;
+}
+
+/* A path in steps: where one is, what is behind, what is ahead. */
+.gui-wizard {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--sheet-radius);
+  background: var(--color-bg);
+}
+.gui-wizard-steps {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+}
+.gui-wizard-steps li {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.gui-wizard-steps button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--control);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border: var(--rule);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-ink-soft);
+  font-size: var(--text-small);
+  font-weight: 600;
+  line-height: var(--leading-snug);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--fast),
+    color var(--fast);
+}
+.gui-wizard-steps button:hover {
+  border-color: var(--color-accent);
+}
+.gui-wizard-steps b {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--color-selected);
+  font-variant-numeric: tabular-nums;
+}
+.gui-wizard-steps span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gui-wizard-steps .gui-passed b {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+}
+.gui-wizard-steps .gui-current button {
+  border-color: var(--color-accent);
+  color: var(--color-ink);
+}
+.gui-wizard-steps .gui-current b {
+  background: linear-gradient(150deg, var(--color-accent), var(--color-accent-strong));
+  color: var(--color-on-accent);
+}
+.gui-wizard-position {
+  display: grid;
+  margin: 0;
+  font-size: var(--text-entry);
+  line-height: var(--leading-snug);
+}
+.gui-wizard-position strong {
+  font-weight: var(--weight-strong);
+}
+.gui-wizard-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: var(--rule);
+}
+
+/* A row browsed sideways: it snaps on each item, and scrolls under a finger. */
+.gui-carousel {
+  --per-view: 1;
+  --gap: var(--space-3);
+
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.gui-carousel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.gui-carousel-head .gui-chart-title {
+  flex: 1;
+  margin: 0;
+}
+.gui-round {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--control);
+  height: var(--control);
+  border: var(--rule);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-accent-text);
+  font-size: var(--text-body);
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background var(--fast),
+    color var(--fast),
+    border-color var(--fast);
+}
+.gui-round:hover:enabled {
+  border-color: transparent;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.gui-round:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.gui-carousel-track {
+  display: flex;
+  gap: var(--gap);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  border-radius: var(--sheet-radius);
+}
+.gui-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+.gui-carousel-track > openui-render-node {
+  display: contents;
+}
+.gui-carousel-track > openui-render-node > openui-dynamic-host > * {
+  flex: 0 0 calc((100% - (var(--per-view) - 1) * var(--gap)) / var(--per-view));
+  min-width: 0;
+  margin: 0;
+  scroll-snap-align: start;
+}
+/* The cards of a Cards block are each an item, not one grid of them. */
+.gui-carousel-track .gui-image img {
+  height: 16rem;
+  max-height: none;
+}
+
+/* Free HTML: a frame of its own, sealed from the page, that opens full screen. */
+.gui-html {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--sheet-radius);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+.gui-html-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  background: var(--color-wood);
+}
+.gui-html-bar strong {
+  flex: 1;
+  min-width: 6rem;
+  overflow: hidden;
+  font-size: var(--text-small);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gui-chip-accent {
+  background: linear-gradient(150deg, var(--color-accent), var(--color-accent-strong));
+  color: var(--color-on-accent);
+}
+.gui-html-body {
+  display: flex;
+  min-height: 0;
+  /* A page that sets no background of its own is read on white, as in a browser. */
+  background: #fff;
+}
+.gui-html iframe {
+  flex: 1;
+  width: 100%;
+  border: 0;
+}
+.gui-html pre {
+  flex: 1;
+  margin: 0;
+  padding: var(--space-4);
+  overflow: auto;
+  background: var(--color-surface);
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.gui-html-wait {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: var(--space-5);
+  background: var(--color-surface);
+  color: var(--color-ink-soft);
+  font-size: var(--text-small);
+}
+.gui-html > .gui-caption {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+}
+/* Full screen: the whole window, whether the browser gave its own or not. */
+.gui-html-full {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+.gui-html-full .gui-html-body {
+  flex: 1;
+}
+
+@media (max-width: 40rem) {
+  .gui-columns {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .gui-hero,
+  .gui-wizard {
+    padding: var(--space-4);
+  }
+  /* On a phone the names of the steps give way: their numbers and the line below say it. */
+  .gui-wizard-steps li {
+    flex: none;
+  }
+  .gui-wizard-steps button {
+    padding-right: var(--space-1);
+  }
+  .gui-wizard-steps span {
+    display: none;
+  }
+  /* One item at a time, the next one showing its edge. */
+  .gui-carousel-track > openui-render-node > openui-dynamic-host > * {
+    flex-basis: 86%;
+  }
+}

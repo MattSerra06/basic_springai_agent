@@ -110,6 +110,53 @@ m3 = Marker("Le Comptoir Dugommier", 43.3005, 5.3828, "Wifi, grande salle")`,
 todo = Checklist(["Réserver le train", "Prévenir le voisin pour les plantes", "Charger la liseuse"], "Avant le départ", true)`,
   },
   {
+    title: 'Page HTML',
+    about:
+      'Une page libre écrite par le modèle, isolée du reste de l’app, qui s’ouvre en plein écran.',
+    program: `root = Response([say, view])
+say = TextContent("Une maquette de page d'accueil, à ouvrir en plein écran.")
+view = HtmlView("Atelier Rivage · maquette", "<style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;grid-template-rows:auto 1fr auto;font:16px/1.5 system-ui,sans-serif;color:#1d2a2f;background:linear-gradient(160deg,#e8f3f1,#fbf6ea)}header{display:flex;justify-content:space-between;align-items:center;padding:20px 28px}header b{font-size:20px;letter-spacing:-.02em}nav{display:flex;gap:18px;font-size:14px;color:#4c6168}main{display:grid;place-content:center;gap:18px;padding:28px;text-align:center}h1{margin:0;font-size:clamp(32px,7vw,68px);line-height:1.02;letter-spacing:-.03em;max-width:14ch}p{margin:0 auto;max-width:44ch;color:#4c6168}button{justify-self:center;padding:12px 22px;border:0;border-radius:999px;background:#0f6b62;color:#fff;font:600 15px system-ui;cursor:pointer;transition:transform .15s}button:hover{transform:translateY(-2px)}#n{font-variant-numeric:tabular-nums}.wave{height:90px;width:100%;display:block}footer{padding:14px 28px;font-size:13px;color:#4c6168}</style>\\n<header><b>Atelier Rivage</b><nav><span>Séjours</span><span>Ateliers</span><span>Contact</span></nav></header>\\n<main><h1>Apprendre la voile, une marée à la fois</h1><p>Des stages de trois jours en petit groupe, au départ de Douarnenez.</p><button onclick='n.textContent=+n.textContent+1'>Je suis intéressé · <span id='n'>12</span></button></main>\\n<footer><svg class='wave' viewBox='0 0 600 90' preserveAspectRatio='none'><path d='M0 50 Q75 10 150 50 T300 50 T450 50 T600 50 V90 H0Z' fill='#0f6b62' opacity='.18'><animate attributeName='d' dur='6s' repeatCount='indefinite' values='M0 50 Q75 10 150 50 T300 50 T450 50 T600 50 V90 H0Z;M0 50 Q75 80 150 50 T300 50 T450 50 T600 50 V90 H0Z;M0 50 Q75 10 150 50 T300 50 T450 50 T600 50 V90 H0Z'/></path></svg>Maquette d'exemple</footer>", 440)`,
+  },
+  {
+    title: 'Parcours en étapes',
+    about: 'Un contenu par étape, précédent et suivant, la progression toujours visible.',
+    program: `root = Response([path])
+$pain = "Campagne"
+$poids = 500
+path = Wizard([s1, s2, s3, s4], "Recevoir la fiche", Action([@ToAssistant("Envoie-moi la fiche de ce pain")]))
+s1 = WizardStep("Le pain", [TextContent("Quel pain voulez-vous faire ?"), Chips("pain", ["Campagne", "Complet", "Seigle"], $pain)])
+s2 = WizardStep("La quantité", [FormControl("Farine", Slider("poids", 250, 1000, 50, 500, "g", $poids)), Metrics([{label: "Eau", value: "" + @Round($poids * 0.7) + " g"}, {label: "Sel", value: "" + @Round($poids * 0.02) + " g"}, {label: "Levain", value: "" + @Round($poids * 0.2) + " g"}])])
+s3 = WizardStep("Le pétrissage", [TextContent("Pétrissez dix minutes, puis laissez reposer la pâte sous un linge."), Timer(600, "Pétrissage")])
+s4 = WizardStep("La cuisson", [Callout("info", "Pain " + $pain + ", " + $poids + " g de farine", "Quarante minutes à 240 °C, dans une cocotte fermée."), Checklist(["Préchauffer le four", "Fariner la cocotte", "Inciser la pâte"], "Avant d'enfourner")])`,
+  },
+  {
+    title: 'Carrousel',
+    about: 'Des éléments de même nature que l’on fait défiler aux flèches, au clavier ou au doigt.',
+    program: `root = Response([one, many])
+one = Carousel([q1, q2, q3], "Ce qu'en disent les stagiaires")
+q1 = Quote("En trois jours, j'ai appris à lire le vent mieux qu'en dix ans de plage.", "Nadia, stage de juin")
+q2 = Quote("On barre dès la première heure. C'est sportif, et c'est ce qu'il faut.", "Thomas, stage d'août")
+q3 = Quote("Le moniteur ne crie jamais. Rien que pour ça, je reviendrai.", "Lucie, stage de septembre")
+many = Carousel([p1, p2, p3, p4, p5], "Les sorties de la semaine", 3)
+p1 = Panel([Tags(["Lundi"]), TextContent("Tour de l'île Tristan, par petit temps.")], "Découverte", "paper")
+p2 = Panel([Tags(["Mardi"]), TextContent("Bords de près jusqu'au cap de la Chèvre.")], "Technique", "paper")
+p3 = Panel([Tags(["Mercredi"]), TextContent("Navigation à l'estime, sans instruments.")], "Carte et compas", "paper")
+p4 = Panel([Tags(["Jeudi"]), TextContent("Départ à l'aube pour l'île de Sein.")], "La grande sortie", "accent")
+p5 = Panel([Tags(["Vendredi"]), TextContent("Régate amicale entre les équipages.")], "Régate", "paper")`,
+  },
+  {
+    title: 'Compositions',
+    about:
+      'Un bandeau en vedette, une colonne principale et sa colonne latérale, des panneaux de tons différents.',
+    program: `root = Response([hero, cols])
+hero = Hero("La baie de Douarnenez, plan d'eau d'école", "Abritée de la houle du large, ventée tous les après-midi : on y apprend vite.", "Bretagne · Finistère", "accent", Buttons([Button("Voir les dates", Action([@ToAssistant("Quelles sont les dates des stages ?")]), "primary"), Button("Comment venir", Action([@ToAssistant("Comment venir à Douarnenez ?")]), "secondary")]))
+cols = Columns([[main1, main2], [side1, side2]], [2, 1])
+main1 = Panel([TextContent("Le vent thermique se lève vers quatorze heures et tombe au coucher du soleil. Les matinées servent à la théorie et aux manœuvres de port."), Table(["Mois", "Vent moyen (nœuds)", "Eau (°C)"], [["Juin", 11, 15], ["Juillet", 12, 17], ["Août", 12, 18], ["Septembre", 13, 17]], "Cliquez sur un en-tête pour trier.")], "Les conditions", "paper")
+main2 = Panel([Steps([Step("Matin", "Briefing météo, nœuds et réglages à quai."), Step("Après-midi", "Trois heures sur l'eau, par équipages de quatre.")])], "Une journée type")
+side1 = Panel([Metrics([{label: "Par stage", value: "8"}, {label: "Bateaux", value: "2"}])], "En petit groupe", "wood")
+side2 = Panel([KeyValues([{label: "Durée", value: "3 jours"}, {label: "Niveau", value: "Débutant"}]), TextContent("Le ciré est fourni.", "muted")], "En bref", "accent")`,
+  },
+  {
     title: 'Mises en page',
     about: 'Des panneaux, des colonnes et des rangées qui s’emboîtent.',
     program: `root = Response([dash])
