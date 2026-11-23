@@ -12,6 +12,21 @@ export interface Sample {
 
 export const samples: Sample[] = [
   {
+    title: 'Tableau de bord',
+    about:
+      'Des données lues par l’interface elle-même : un filtre les recharge sans repasser par l’agent. Ici la source est simulée.',
+    program: `root = Response([board])
+$ticker = "Rivage"
+$days = "7"
+prices = Query("demo_prices", {ticker: $ticker, days: $days}, [{date: "", close: 0, volume: 0}])
+quote = Query("demo_quote", {ticker: $ticker}, {close: 0, change: 0}, 60)
+board = Panel([filters, kpis, Columns([[chart], [tbl]], [3, 2])], "Cours de " + $ticker)
+filters = Stack([Chips("ticker", ["Rivage", "Sémaphore", "Estran"], $ticker), Chips("days", ["7", "14", "30"], $days)], "row", "m", "center", "between")
+kpis = Metrics([{label: "Dernier cours", value: "" + @Round(quote.close, 2) + " €", detail: "" + @Round(quote.change, 2) + " %", trend: quote.change >= 0 ? "up" : "down"}, {label: "Plus haut", value: "" + @Round(@Max(prices.close), 2) + " €"}, {label: "Plus bas", value: "" + @Round(@Min(prices.close), 2) + " €"}, {label: "Volume moyen", value: "" + @Round(@Avg(prices.volume))}])
+chart = LineChart(prices.date, [Series("Clôture", prices.close)], "Clôture sur " + $days + " jours", "€")
+tbl = Table(["Date", "Clôture (€)", "Volume"], @Each(@Sort(prices, "date", "desc"), "p", [p.date, p.close, p.volume]))`,
+  },
+  {
     title: 'Calculatrice',
     about: 'Une mini-application : son état vit dans le navigateur, les touches le modifient.',
     program: `root = Response([calc])

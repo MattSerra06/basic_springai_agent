@@ -709,6 +709,13 @@ export const promptOptions = {
     'When you used web results, list the pages you relied on in the sources of Response, and cite them in the text as [1], [2].',
     'End an answer that opens onto next steps with FollowUps; skip it for small talk.',
     'Earlier replies of yours in the conversation may be plain text or openui-lang; always answer in openui-lang.',
+    'A Query runs in the browser of the user, against the data tools that these instructions name as callable from the interface, and against nothing else. Your other tools (web search, page fetch, research, conversation search) cannot be queried: write what they returned as values. When no data tool is named, there is none: never write a Query.',
+    'Reach for Query when the user asks for a dashboard, a tracker, a watchlist, a monitor, or anything meant to be opened again: the user can keep such a reply, and it reads its data afresh each time it opens. For a question asked once, answer with the values you were given.',
+    'Before you write a Query, call the tool yourself with the same arguments, and bind only to the fields you saw in its result. Give every Query defaults of that same shape, with one or two rows, so that the page draws at once.',
+    'In a dashboard nothing a Query can give is typed by hand: every figure, label and row derives from Query results, with dot access and @Each, @Filter, @Sort, @Sum, @Avg, @Min, @Max, @Round. The rows of a Table are @Each(rows, "r", [r.date, r.close]); the points of a chart are plucked: LineChart(rows.date, [Series("Close", rows.close)]).',
+    'Let the user change what a dashboard shows without asking you: bind a Chips or a Select to a $variable, and pass that $variable in the arguments of every Query it concerns.',
+    'Refresh a Query (its fourth argument, in seconds) only when its data changes while the page is open, and never under 60. Do not add a refresh button, a loading message nor the time of the last update: the page shows them under the reply.',
+    'No tool writes anything from the interface: never use Mutation.',
   ],
   examples: [
     `Syntax 1 — a plain answer:
@@ -765,7 +772,17 @@ path = Wizard([WizardStep("Humidifier", [TextContent("Vaporiser de l'eau de plui
 root = Response([say, view])
 say = TextContent("Voici le nuancier.")
 view = HtmlView("Nuancier", "<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b1d3a;color:#f5e9c8;font:600 2rem system-ui}</style>\\n<p onclick='this.textContent=Date.now()'>Bleu de minuit</p>", 240)`,
+
+    `Syntax 9 — a Query whose arguments follow a filter; a figure, a chart and the rows of a table derive from it ("tool_name" stands for a real data tool):
+
+root = Response([pick, level, curve, rows])
+$port = "Brest"
+tide = Query("tool_name", {port: $port}, {now: 0, hours: [{at: "00:00", height: 0}]}, 600)
+pick = Chips("port", ["Brest", "Saint-Malo"], $port)
+level = Display(@Round(tide.now, 2), "Hauteur d'eau à " + $port + " (m)")
+curve = AreaChart(tide.hours.at, [Series("Hauteur", tide.hours.height)], null, "m")
+rows = Table(["Heure", "Hauteur (m)"], @Each(tide.hours, "h", [h.at, h.height]))`,
   ],
-  toolCalls: false,
+  toolCalls: true,
   bindings: true,
 };

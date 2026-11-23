@@ -29,6 +29,9 @@ Monorepo d'un agent conversationnel en streaming :
 - **Recherche web** (optionnelle, [Linkup](https://docs.linkup.so)) : avec une clé
   `LINKUP_API_KEY`, le modèle peut chercher sur le web, lire une page et lancer une
   recherche approfondie. Voir « Outils web ».
+- **Données de marché** (optionnelles, serveur MCP d'[EODHD](https://eodhd.com)) : avec
+  une clé `EODHD_API_KEY`, le modèle reçoit les outils du serveur MCP d'EODHD (cours,
+  fondamentaux, actualités, indicateurs…). Voir « Données de marché ».
 - **Réponses en interface** ([OpenUI](https://github.com/thesysdev/openui), partie open
   source uniquement) : le modèle écrit ses réponses en OpenUI Lang et le chat les dessine
   au fil du streaming : tableaux, graphiques, cartes, liens et sources citées, formulaires,
@@ -40,6 +43,7 @@ Monorepo d'un agent conversationnel en streaming :
 - Node.js 22+
 - Une clé API OpenAI
 - Facultatif : une clé API Linkup (https://app.linkup.so) pour la recherche web
+- Facultatif : une clé API EODHD (https://eodhd.com) pour les données de marché
 
 ## Lancer en local
 
@@ -49,15 +53,17 @@ Backend (port 8080) :
 cd backend
 export OPENAI_API_KEY=sk-...
 export LINKUP_API_KEY=...   # facultatif : active les outils web
+export EODHD_API_KEY=...    # facultatif : active les données de marché
 ./mvnw spring-boot:run
 ```
 
-Sous PowerShell : `$env:OPENAI_API_KEY = "sk-..."`, `$env:LINKUP_API_KEY = "..."`, puis
-`.\mvnw.cmd spring-boot:run`.
+Sous PowerShell : `$env:OPENAI_API_KEY = "sk-..."`, `$env:LINKUP_API_KEY = "..."`,
+`$env:EODHD_API_KEY = "..."`, puis `.\mvnw.cmd spring-boot:run`.
 
 Sans `LINKUP_API_KEY`, l'application démarre normalement et les outils web ne sont
 simplement pas proposés au modèle. Le log de démarrage dit lequel des deux cas s'applique
-(`Web tools are on` / `Web tools are off`). La clé n'est jamais écrite dans les logs.
+(`Web tools are on` / `Web tools are off`). Il en va de même pour `EODHD_API_KEY`
+(`Market data tools are on` / `off`). Les clés ne sont jamais écrites dans les logs.
 
 Frontend (port 4200, `/api` est proxifié vers le backend) :
 
@@ -99,6 +105,15 @@ Tout est dans `backend/src/main/resources/application.yaml` :
 | `agent.linkup.instructions` | Paragraphe ajouté au prompt système quand les outils web sont actifs |
 | `agent.linkup.research.enabled` | `false` pour ne pas donner au modèle les outils de recherche approfondie (payants à la tâche) |
 | `agent.linkup.research.poll-interval`, `agent.linkup.research.max-wait` | Pendant que le modèle attend une recherche approfondie : fréquence des vérifications, et attente maximale d'un appel d'outil |
+| `agent.eodhd.api-key` | Clé API EODHD, lue depuis `EODHD_API_KEY` ; vide = pas de données de marché |
+| `agent.eodhd.base-url`, `agent.eodhd.endpoint` | Adresse du serveur MCP d'EODHD (`https://mcp.eodhd.com`, `/v1/mcp`) |
+| `agent.eodhd.connect-timeout`, `agent.eodhd.timeout` | Délais de connexion et de réponse d'une requête au serveur, appel d'outil compris |
+| `agent.eodhd.tools` | Noms des outils du serveur donnés au modèle ; `[]` pour tous (environ 70, envoyés à chaque message) |
+| `agent.eodhd.max-result-chars` | Taille maximale du texte qu'un résultat d'outil renvoie au modèle ; au-delà il est coupé |
+| `agent.eodhd.instructions` | Paragraphe ajouté au prompt système quand ces outils sont actifs |
+| `agent.dashboards.cache` | Durée pendant laquelle la réponse d'un outil de données est resservie à une interface qui repose la même question |
+| `agent.dashboards.max-result-chars` | Plus longue réponse d'outil qu'une interface peut charger ; au-delà c'est une erreur, pas un document coupé |
+| `agent.dashboards.instructions` | Paragraphe ajouté au prompt système quand des outils de données existent ; `{tools}` y devient leurs noms |
 | `agent.openui.enabled` | `true` : le modèle écrit ses réponses en OpenUI Lang, que le frontend dessine ; `false` : réponses en texte brut |
 | `agent.openui.prompt` | Le prompt qui enseigne au modèle le langage et le catalogue, généré depuis le frontend (`npm run openui:prompt`) |
 
@@ -193,6 +208,36 @@ les conversations déjà stockées ne se dessinent plus.
   `npm install` ; `OPENUI_TELEMETRY_DISABLED=1` (ou `DO_NOT_TRACK=1`) la coupe. Rien n'est
   envoyé à l'exécution.
 
+### Tableaux de bord
+
+Une réponse peut lire ses données elle-même, depuis le navigateur, avec `Query` :
+
+```
+prices = Query("get_historical_stock_prices", {ticker: $ticker}, [{date: "", close: 0}])
+chart = LineChart(prices.date, [Series("Clôture", prices.close)])
+rows = Table(["Date", "Clôture"], @Each(prices, "p", [p.date, p.close]))
+```
+
+C'est le mécanisme open source d'OpenUI (`Query`, `$variables`, `@Each`, `@Filter`…),
+sans son cloud : les requêtes passent par `POST /api/tools/{nom}` du backend (voir
+« Outils de données pour les interfaces »).
+
+- **Quand une requête part** : une fois la réponse entièrement écrite, une fois par
+  requête ; de nouveau quand un filtre dont elle dépend change (un `Chips` ou un `Select`
+  relié à une `$variable` passée dans ses arguments), sans message au modèle ; et à
+  l'intervalle qu'elle demande en quatrième argument.
+- **Hors de vue** : rien n'est demandé au backend quand l'onglet est caché ou que la
+  réponse est sortie de l'écran ; le rafraîchissement manqué est fait au retour. Quitter
+  la conversation arrête ses minuteurs.
+- **Sous la réponse** : l'heure de lecture des données, « Actualiser », et ce qu'une
+  source a répondu quand elle a échoué (la page reste dessinée avec ce qu'elle avait).
+- **Enregistrer** : « Enregistrer le tableau de bord » garde le programme de la réponse
+  sous un titre. `/dashboards` les liste, `/dashboards/:id` en affiche un en pleine
+  largeur, données relues à l'ouverture. Seul le programme est gardé : les filtres
+  reviennent à leur valeur de départ.
+- **Sur `/catalogue`**, le tableau de bord d'exemple lit des données inventées
+  (`demo-tools.ts`) : il montre le mécanisme sans backend.
+
 ## Outils web
 
 Avec une clé Linkup, le modèle reçoit ces outils en plus de `conversation_search`. Leurs
@@ -217,6 +262,40 @@ avec ce qu'il convient de faire (corriger, réessayer, prévenir l'utilisateur).
 
 L'interface n'affiche pas encore les appels d'outil : pendant une recherche, le flux du
 run ne porte que les lignes de keep-alive.
+
+## Données de marché
+
+Avec une clé EODHD, le backend se connecte au démarrage au serveur MCP hébergé d'EODHD
+(Streamable HTTP, client MCP de Spring AI), y lit la liste des outils et donne au modèle
+ceux nommés dans `agent.eodhd.tools`, tels que le serveur les nomme et les décrit :
+`resolve_ticker`, `get_live_price_data`, `get_historical_stock_prices`,
+`get_fundamentals_data`, `get_company_news`, `stock_screener`…
+
+- **La clé** voyage comme le serveur hébergé la prend : en paramètre `apikey` de son
+  adresse. Elle est retirée de tout message d'erreur avant qu'il soit loggé ou rendu au
+  modèle.
+- **Sans clé, ou serveur injoignable au démarrage** : l'application démarre quand même,
+  sans ces outils (le log le dit). Il faut la redémarrer pour réessayer.
+- **Une erreur d'un appel** (ticker inconnu, offre qui ne couvre pas la donnée, crédits
+  épuisés, délai dépassé) revient au modèle comme résultat d'outil : le run continue.
+- **Un résultat très long** (des années de cours) est coupé pour le modèle, avec le
+  conseil de demander moins.
+
+### Outils de données pour les interfaces
+
+Ces mêmes outils sont appelables par une interface dessinée dans le navigateur, sans
+repasser par le modèle : c'est ce qui permet un tableau de bord qui recharge ses chiffres.
+
+- `GET /api/tools` les liste ; `POST /api/tools/{nom}` en exécute un avec le corps JSON
+  comme arguments et répond `{"data": …}`, le JSON de l'outil lui-même.
+- Seuls les outils de données y sont : ni `conversation_search` ni les outils Linkup
+  (payants à l'appel).
+- Une réponse est resservie pendant `agent.dashboards.cache` (30 s) à la même question :
+  plusieurs panneaux sur le même cours ne coûtent qu'un appel à EODHD.
+- Le prompt système nomme ces outils au modèle et lui demande d'appeler l'outil lui-même
+  avant d'y relier une interface, pour ne s'appuyer que sur des champs qu'il a vus.
+- Les tableaux de bord gardés (`/api/dashboards`) vivent en mémoire : ils disparaissent
+  au redémarrage du backend.
 
 ## Sécurité
 
@@ -276,6 +355,12 @@ l'utilise.
 | `GET /api/sessions/{id}` | Messages d'une conversation, et `activeRunId` si une réponse est en cours |
 | `POST /api/sessions/{id}/interrupt` | Arrête la réponse en cours |
 | `DELETE /api/sessions/{id}` | Supprime une conversation |
+| `GET /api/tools` | Outils de données qu'une interface peut appeler : `[{"name", "description", "inputSchema"}]` ; vide sans clé EODHD |
+| `POST /api/tools/{nom}` | Exécute un outil de données ; le corps JSON est ses arguments. `200 {"data": …}`, `404` pour un outil inconnu ou réservé au modèle, `400` si les arguments ne sont pas un objet, `502 {"error"}` si l'outil a échoué |
+| `POST /api/dashboards` | Garde un tableau de bord `{"title", "program"}` (son programme OpenUI Lang) ; répond `201` avec `{"id", "title", "program", "createdAt"}` |
+| `GET /api/dashboards` | Tableaux de bord gardés, le plus récent d'abord, sans leur programme |
+| `GET /api/dashboards/{id}` | Un tableau de bord complet, ou `404` |
+| `DELETE /api/dashboards/{id}` | Oublie un tableau de bord |
 
 Événements du flux d'un run :
 

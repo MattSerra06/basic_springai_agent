@@ -200,6 +200,24 @@ const TOOL_LABELS: Record<string, string> = {
   linkup_credit_balance: 'Solde Linkup',
   linkup_research_start: 'Recherche approfondie',
   linkup_research_result: 'Recherche approfondie',
+  // Market data (EODHD)
+  resolve_ticker: 'Recherche de titre',
+  get_stocks_from_search: 'Recherche de titre',
+  get_live_price_data: 'Cours en direct',
+  get_historical_stock_prices: 'Historique des cours',
+  get_intraday_historical_data: 'Cours intrajournaliers',
+  get_fundamentals_data: 'Données fondamentales',
+  get_historical_market_cap: 'Capitalisation',
+  get_historical_dividends: 'Dividendes',
+  get_company_news: 'Actualités financières',
+  get_sentiment_data: 'Sentiment de marché',
+  get_technical_indicators: 'Indicateurs techniques',
+  get_upcoming_earnings: 'Résultats à venir',
+  get_earnings_trends: 'Tendances des résultats',
+  get_macro_indicator: 'Indicateurs macro',
+  get_economic_events: 'Calendrier économique',
+  stock_screener: 'Filtre de titres',
+  get_exchanges_list: 'Places de marché',
 };
 
 export function toolLabel(name: string): string {

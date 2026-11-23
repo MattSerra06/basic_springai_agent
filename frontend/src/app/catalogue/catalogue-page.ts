@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { DATA_TOOLS } from '../openui/data-tools';
+import { demoTools } from '../openui/demo-tools';
 import { GeneratedUi } from '../openui/generated-ui';
 import { samples } from '../openui/samples';
 import { ThemeToggle } from '../theme/theme-toggle';
@@ -12,6 +14,8 @@ import { ThemeToggle } from '../theme/theme-toggle';
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [GeneratedUi, RouterLink, ThemeToggle],
+  // The dashboard of this page reads made-up data: it shows the mechanism, not a market.
+  providers: [{ provide: DATA_TOOLS, useValue: demoTools }],
   selector: 'app-catalogue',
   styleUrl: './catalogue-page.css',
   template: `<header class="bar">
@@ -43,7 +47,11 @@ import { ThemeToggle } from '../theme/theme-toggle';
         <section [id]="anchor($index)">
           <h2>{{ sample.title }}</h2>
           <p class="about">{{ sample.about }}</p>
-          <app-generated-ui [program]="sample.program" (send)="sent.set($event)" />
+          <app-generated-ui
+            [program]="sample.program"
+            [saveable]="false"
+            (send)="sent.set($event)"
+          />
           <details>
             <summary>Voir le programme</summary>
             <pre tabindex="0"><code>{{ sample.program }}</code></pre>

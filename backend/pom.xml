@@ -52,6 +52,11 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-session-jdbc</artifactId>
         </dependency>
+        <!-- MCP client: the tools of a remote MCP server (EODHD market data) as Spring AI tools -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-mcp</artifactId>
+        </dependency>
         <!-- InterruptAdvisor -->
         <dependency>
             <groupId>org.springaicommunity</groupId>

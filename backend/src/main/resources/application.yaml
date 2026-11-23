@@ -76,6 +76,74 @@ agent:
     enabled: true
     # Generated from the frontend's catalogue: `npm run openui:prompt` in frontend/.
     prompt: classpath:openui/system-prompt.txt
+  # Market data tools: those of the EODHD MCP server (https://eodhd.com), reached over
+  # Streamable HTTP when the application starts.
+  eodhd:
+    # Never commit a key: export EODHD_API_KEY before starting the app. Without one
+    # the app starts all the same and the model is not given these tools.
+    api-key: ${EODHD_API_KEY:}
+    # The hosted server takes the key as the apikey parameter of its address, which
+    # the backend adds itself; it is never logged nor told to the model.
+    base-url: https://mcp.eodhd.com
+    endpoint: /v1/mcp
+    connect-timeout: 10s
+    # One request to the server, a tool call included.
+    timeout: 45s
+    # Most text one tool result carries to the model, in characters: years of daily
+    # prices or a whole fundamentals sheet are cut there.
+    max-result-chars: 40000
+    # The tools given to the model, among the 70 or so the server has. Each one is
+    # sent with every message, so the list is kept to what a conversation about
+    # markets needs; add names from the server's list, or leave it empty ([]) for all.
+    tools:
+      - resolve_ticker
+      - get_stocks_from_search
+      - get_live_price_data
+      - get_historical_stock_prices
+      - get_intraday_historical_data
+      - get_fundamentals_data
+      - get_historical_market_cap
+      - get_historical_dividends
+      - get_company_news
+      - get_sentiment_data
+      - get_technical_indicators
+      - get_upcoming_earnings
+      - get_earnings_trends
+      - get_macro_indicator
+      - get_economic_events
+      - stock_screener
+      - get_exchanges_list
+    # Added to the system prompt when these tools are on.
+    instructions: >
+      You have market data tools backed by EODHD: prices (live, daily, intraday),
+      fundamentals, dividends, news and sentiment, technical indicators, earnings,
+      macro indicators and a stock screener. Use them for any figure about a
+      listed company, an index, a currency or an economy rather than answering
+      from memory or searching the web. Tickers are written SYMBOL.EXCHANGE
+      (AAPL.US, MC.PA): resolve a name to its ticker first when you are not sure
+      of it. Ask for no more than the answer needs (a period, a few fields), say
+      what date the figures are from, and never present them as advice to buy
+      or sell.
+  # Dashboards: an interface the agent wrote, kept by the user, that loads its figures
+  # by itself through the data tools (the market data ones) each time it is drawn.
+  # They are kept in memory: gone when the application stops.
+  dashboards:
+    # How long the answer of a data tool is given again to an interface that asks the
+    # same thing: several panels on one quote, a refresh every few seconds.
+    cache: 30s
+    # The longest answer of a data tool an interface may load, in characters. Unlike
+    # the model, it gets the answer whole or not at all.
+    max-result-chars: 2000000
+    # Added to the system prompt when interfaces have data tools; {tools} is their names.
+    instructions: >
+      Data tools an interface can call by itself, with Query: {tools}.
+      They are your own tools of the same names and take the same arguments,
+      without activity. An interface gets the JSON of the tool whole and as it
+      is, where your own call may have been cut. Before you write a Query, call
+      the tool yourself with the same arguments, and bind the interface only to
+      fields you saw in its result: never guess the shape of an answer. Use a
+      Query only for figures that are worth reloading (a quote, a history, a
+      screen); what you already know goes in the interface as it is.
   # Web tools, backed by the Linkup API (https://docs.linkup.so).
   linkup:
     # Never commit a key: export LINKUP_API_KEY before starting the app. Without

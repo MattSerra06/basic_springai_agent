@@ -5,6 +5,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import io.github.mattserra06.agent.chat.AgentTools;
+import io.github.mattserra06.agent.dashboard.DashboardProperties;
+import io.github.mattserra06.agent.dashboard.DataTools;
+import io.github.mattserra06.agent.eodhd.EodhdProperties;
+import io.github.mattserra06.agent.eodhd.EodhdTools;
 import io.github.mattserra06.agent.linkup.LinkupClient;
 import io.github.mattserra06.agent.linkup.LinkupProperties;
 import io.github.mattserra06.agent.linkup.LinkupResearchTools;
@@ -41,14 +45,23 @@ public class AgentConfig {
      */
     @Bean
     ChatClient agentChatClient(ChatClient.Builder builder, SessionService sessionService,
-                               AgentProperties properties, LinkupProperties linkup, OpenUiProperties openUi) {
+                               AgentProperties properties, LinkupProperties linkup, EodhdProperties eodhd,
+                               EodhdTools marketData, OpenUiProperties openUi, DashboardProperties dashboards,
+                               DataTools dataTools) {
         String systemPrompt = properties.systemPrompt();
         if (linkup.hasApiKey()) {
             systemPrompt = systemPrompt.strip() + "\n" + linkup.instructions().strip();
         }
+        if (marketData.on()) {
+            systemPrompt = systemPrompt.strip() + "\n" + eodhd.instructions().strip();
+        }
         if (openUi.enabled()) {
             systemPrompt = systemPrompt.strip() + "\n\n" + openUi.instructions();
             log.info("Generated interface is on: replies are written in OpenUI Lang");
+            if (!dataTools.names().isEmpty()) {
+                // Which tools an interface may bind to depends on what is plugged in here
+                systemPrompt = systemPrompt.strip() + "\n\n" + dashboards.instructions(dataTools.names());
+            }
         }
         else {
             log.info("Generated interface is off: replies are plain text");
@@ -62,13 +75,35 @@ public class AgentConfig {
     }
 
     /**
+     * The market data tools: those of the EODHD MCP server, learnt from it when the
+     * application starts. Without an EODHD API key, or when the server cannot be reached
+     * then, there are none and the agent runs without them. The connection is closed
+     * with the application.
+     */
+    @Bean
+    EodhdTools marketData(EodhdProperties eodhd) {
+        return EodhdTools.connect(eodhd);
+    }
+
+    /**
+     * The tools an interface drawn in the browser may call by itself, to load and reload
+     * its figures: the market data ones. A dashboard is bound to them.
+     */
+    @Bean
+    DataTools dataTools(EodhdTools marketData, DashboardProperties dashboards) {
+        return new DataTools(marketData.forInterfaces(dashboards.maxResultChars()), dashboards.cache(),
+                Clock.systemUTC());
+    }
+
+    /**
      * The tools of the agent. They are not set on the ChatClient: each run hands them to
      * the model itself, so that it hears what every call is for (see {@link AgentTools}).
      */
     @Bean
-    AgentTools agentTools(SessionService sessionService, LinkupProperties linkup) {
+    AgentTools agentTools(SessionService sessionService, LinkupProperties linkup, EodhdTools marketData) {
         List<Object> tools = new ArrayList<>();
         tools.add(SessionRecallTools.builder(sessionService).build());
+        tools.addAll(marketData.callbacks());
         if (linkup.hasApiKey()) {
             LinkupClient client = new LinkupClient(linkup);
             tools.add(new LinkupTools(client, linkup, Clock.systemDefaultZone()));

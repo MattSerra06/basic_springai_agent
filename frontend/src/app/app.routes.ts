@@ -23,5 +23,14 @@ export const routes: Routes = [
     path: 'catalogue',
     loadComponent: () => import('./catalogue/catalogue-page').then((page) => page.CataloguePage),
   },
+  {
+    // The replies with live data the user kept, and one of them on the whole page.
+    path: 'dashboards',
+    loadComponent: () => import('./dashboards/dashboards').then((page) => page.DashboardsPage),
+  },
+  {
+    path: 'dashboards/:id',
+    loadComponent: () => import('./dashboards/dashboards').then((page) => page.DashboardPage),
+  },
   { path: '**', redirectTo: '' },
 ];

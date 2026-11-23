@@ -39,7 +39,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(properties = {
         "spring.ai.openai.api-key=test",
         "spring.datasource.url=jdbc:h2:mem:web-tools-test;DB_CLOSE_DELAY=-1",
-        "agent.linkup.api-key=" + FakeLinkup.API_KEY })
+        "agent.linkup.api-key=" + FakeLinkup.API_KEY,
+        "agent.eodhd.api-key=" })
 class WebToolsTest {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(10);

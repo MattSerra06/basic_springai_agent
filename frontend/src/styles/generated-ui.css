@@ -2162,3 +2162,67 @@ textarea.gui-input {
     flex-basis: 86%;
   }
 }
+
+/*
+ * Under a reply that reads data by itself: when it was read, and what can be done with
+ * it. A dot beats while a query is in flight.
+ */
+.gui-data {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: var(--rule);
+  font-family: var(--font-text);
+}
+.gui-data-status {
+  display: flex;
+  flex: 1 1 12rem;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: var(--leading-text);
+  color: var(--color-ink-soft);
+}
+.gui-data-status i {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-good);
+}
+.gui-data-loading {
+  background: var(--color-accent) !important;
+  animation: gui-blink 0.6s ease-in-out infinite alternate;
+}
+.gui-data-failed {
+  flex-basis: 100%;
+  color: var(--color-danger);
+}
+.gui-data-failed i {
+  background: var(--color-danger);
+}
+.gui-data-save {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.gui-data-save .gui-input {
+  flex: 1 1 14rem;
+  width: auto;
+  min-height: var(--control-sm);
+}
+.gui-data a.gui-chip {
+  display: inline-grid;
+  place-items: center;
+  text-decoration: none;
+}
+.gui-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
