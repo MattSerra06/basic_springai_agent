@@ -5,6 +5,10 @@ spring:
     openai:
       # Never commit a key: export OPENAI_API_KEY before starting the app.
       api-key: ${OPENAI_API_KEY}
+      # The longest one call to the model may last, its whole streamed reply included.
+      # Spring AI gives it 60 s by default, which cuts a reply the model reasons long
+      # on ("Stream failed ... timeout"); this is the default of the OpenAI SDK itself.
+      timeout: 10m
       chat:
         # Talk to the Responses API rather than Chat Completions.
         api: responses

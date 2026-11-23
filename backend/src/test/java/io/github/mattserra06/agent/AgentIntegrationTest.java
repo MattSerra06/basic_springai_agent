@@ -22,6 +22,7 @@ import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.part.ReasoningPart;
 import org.springframework.ai.chat.messages.part.StreamingParts;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.model.openai.autoconfigure.OpenAiCommonProperties;
 import org.springframework.ai.openai.responses.OpenAiResponsesChatOptions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -78,9 +79,18 @@ class AgentIntegrationTest {
     @Autowired
     StubChatModel model;
 
+    @Autowired
+    OpenAiCommonProperties openAi;
+
     @BeforeEach
     void resetModel() {
         model.reset();
+    }
+
+    @Test
+    void aCallToTheModelIsGivenTimeToReasonAndStreamItsReply() {
+        // Spring AI's own default, 60 s for the whole streamed reply, cut long replies short
+        assertThat(openAi.getTimeout()).isEqualTo(Duration.ofMinutes(10));
     }
 
     @Test

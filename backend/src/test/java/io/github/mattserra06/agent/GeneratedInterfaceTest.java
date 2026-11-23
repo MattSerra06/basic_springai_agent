@@ -71,7 +71,7 @@ class GeneratedInterfaceTest {
         assertThat(system)
                 .contains("root = Response(")
                 .contains("sources?: {title: string, url: string, publisher?: string}[]")
-                .contains("{required: true}")
+                .contains("{ required: true, email: true")
                 .contains("separated by \\n\\n");
     }
 
