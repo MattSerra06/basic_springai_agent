@@ -13,6 +13,7 @@ import io.github.mattserra06.agent.openui.OpenUiProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.session.SessionService;
 import org.springframework.ai.session.advisor.SessionAdvisors;
 import org.springframework.ai.session.tool.SessionRecallTools;
@@ -54,6 +55,8 @@ public class AgentConfig {
         }
         return builder
                 .defaultSystem(systemPrompt)
+                .defaultOptions(OpenAiChatOptions.builder()
+                        .parallelToolCalls(true))
                 .defaultAdvisors(SessionAdvisors.builder(sessionService).sessionIdInToolContext(true).build())
                 .build();
     }
