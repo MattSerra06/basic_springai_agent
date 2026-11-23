@@ -108,6 +108,8 @@ HtmlView(title: string, html: string, height?: number) — A page of your own de
 - The frame is sealed: no network at all (no CDN, no web font, no image by URL, no fetch), no link to another page, no storage, no form sent. Everything is inline: CSS in <style>, JavaScript in <script>, drawings in inline SVG or CSS.
 - Give the page its own background and colours, and make it fit any width: it is seen in a narrow column, then full screen.
 - Inside html, write attributes with single quotes and line breaks as \n, so that only double quotes inside scripts need a backslash.
+- Write the script of the page plainly: one statement per line (\n), no minified one-liner, and every name spelled the same wherever it is used. One typo stops the whole script, and the page with it.
+- When the user reports the error a page stopped on, fix that error and give the whole document again, in a new HtmlView.
 - One HtmlView per reply, with a sentence of TextContent before it. It cannot read the $variables of the reply, nor send you a message.
 
 ### Buttons and follow-ups

@@ -300,14 +300,33 @@ export function frameDocument(html: string): string {
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     // A link opens nowhere: the frame may not open a window, and should not leave itself.
     '<base target="_blank">' +
+    REPORTER +
     page
   );
 }
 
+/** What a frame says to the page that holds it. */
+const FRAME_ERROR = 'openui-html-view';
+
+/*
+ * Put before the model's page: tells the app when a script of the page stops on an error,
+ * which nobody would see otherwise. The frame is of another origin, so a message is all
+ * that can cross; it carries the error's text and line, and is read as text only.
+ */
+const REPORTER =
+  '<script>(function(){var n=0;function tell(m,l){if(n++<3)parent.postMessage(' +
+  `{source:'${FRAME_ERROR}',error:String(m).slice(0,300),line:l||0},'*')}` +
+  "addEventListener('error',function(e){tell(e.message||'erreur',e.lineno)});" +
+  "addEventListener('unhandledrejection',function(e){tell(e.reason&&e.reason.message||e.reason)})" +
+  '})()</script>';
+
 @Component({
   changeDetection: OnPush,
   selector: 'gui-html-view',
-  host: { '(document:fullscreenchange)': 'onFullscreenChange()' },
+  host: {
+    '(document:fullscreenchange)': 'onFullscreenChange()',
+    '(window:message)': 'onMessage($event)',
+  },
   template: `<figure #frame class="gui-html" [class.gui-html-full]="full()">
     <figcaption class="gui-html-bar">
       <strong>{{ p.title || 'Page' }}</strong>
@@ -346,7 +365,7 @@ export function frameDocument(html: string): string {
             referrerpolicy="no-referrer"
             [title]="p.title || 'Page'"
             [srcdoc]="page()"
-            (load)="onLoad()"
+            (load)="onLoad($event)"
           ></iframe>
         } @else {
           <iframe
@@ -354,13 +373,21 @@ export function frameDocument(html: string): string {
             referrerpolicy="no-referrer"
             [title]="p.title || 'Page'"
             [srcdoc]="page()"
-            (load)="onLoad()"
+            (load)="onLoad($event)"
           ></iframe>
         }
       }
     </div>
     @if (left()) {
       <p class="gui-caption" role="status">La page a voulu quitter la vue : elle a été remise.</p>
+    }
+    @if (failure(); as problem) {
+      <p class="gui-caption gui-html-error" role="alert">
+        <span>Le script de la page s'est arrêté : {{ problem }}</span>
+        <button type="button" class="gui-chip" [disabled]="blocked()" (click)="askFix(problem)">
+          Demander une correction
+        </button>
+      </p>
     }
   </figure>`,
 })
@@ -392,6 +419,8 @@ export class HtmlView extends Block<{ title: string; html: string; height: numbe
   protected readonly left = signal(false);
   /** It did so again and again: it is no longer drawn. */
   protected readonly stopped = signal(false);
+  /** The first error a script of the page stopped on, as the frame told it. */
+  protected readonly failure = signal<string | null>(null);
 
   /** How many times the frame of this version has loaded: once is the page itself. */
   private loads = 0;
@@ -407,12 +436,18 @@ export class HtmlView extends Block<{ title: string; html: string; height: numbe
         this.restarts = 0;
         this.left.set(false);
         this.stopped.set(false);
+        this.failure.set(null);
       });
     });
     inject(DestroyRef).onDestroy(() => this.leaveFull());
   }
 
-  protected onLoad(): void {
+  protected onLoad(event: Event): void {
+    // A frame put into a page already drawn loads once empty, before it is given its
+    // document: that load is not the page's, and must not be taken for the page leaving.
+    if (!(event.target as HTMLIFrameElement).getAttribute('srcdoc')) {
+      return;
+    }
     if (++this.loads < 2) {
       return;
     }
@@ -434,7 +469,28 @@ export class HtmlView extends Block<{ title: string; html: string; height: numbe
 
   private redraw(): void {
     this.loads = 0;
+    this.failure.set(null);
     this.version.update((version) => version + 1);
+  }
+
+  /** The frame reports that a script of the page stopped. Only the frame of this view is heard. */
+  protected onMessage(event: MessageEvent): void {
+    const frame = this.frame().nativeElement.querySelector('iframe');
+    const data = event.data as { source?: unknown; error?: unknown; line?: unknown } | null;
+    if (!frame || event.source !== frame.contentWindow || data?.source !== FRAME_ERROR) {
+      return;
+    }
+    if (this.failure() === null) {
+      const line = Number(data.line) > 0 ? ` (ligne ${Number(data.line)})` : '';
+      this.failure.set(String(data.error ?? 'erreur').slice(0, 200) + line);
+    }
+  }
+
+  /** Asks the agent, in the user's name and on their click, to repair the page. */
+  protected askFix(problem: string): void {
+    this.act(
+      `La page « ${this.p.title || 'Page'} » ne fonctionne pas : son script s'arrête sur l'erreur « ${problem} ». Corrige-la et redonne la page entière.`,
+    );
   }
 
   /**

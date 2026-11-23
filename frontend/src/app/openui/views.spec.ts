@@ -114,6 +114,65 @@ view = HtmlView("Nuancier", "<!doctype html><style>body{background:#0b1d3a}</sty
       expect(el().querySelector('iframe')).toBeNull();
       expect(text('.gui-html-wait')[0]).toContain('arrêtée');
     });
+
+    it('does not take the empty load of a frame just put in the page for the page leaving', async () => {
+      await draw(page);
+      const frame = el().querySelector('iframe')!;
+      const document = frame.getAttribute('srcdoc')!;
+
+      // A browser loads a frame added to a page already drawn once before it has its
+      // document. Such loads never count, however many: only those of the document do,
+      // and the test browser may already have sent that one.
+      for (let turn = 0; turn < 4; turn++) {
+        frame.removeAttribute('srcdoc');
+        frame.dispatchEvent(new Event('load'));
+        frame.setAttribute('srcdoc', document);
+        await settle();
+      }
+
+      expect(el().querySelector('iframe')).toBe(frame);
+      expect(el().querySelector('.gui-html > .gui-caption')).toBeNull();
+      expect(el().querySelector('.gui-html-wait')).toBeNull();
+    });
+
+    it('says what a script of the page stopped on, and has it repaired on a click', async () => {
+      await draw(page);
+      const frame = el().querySelector('iframe')!;
+      // The page is told to report its errors, before anything the model wrote
+      expect(frame.getAttribute('srcdoc')).toMatch(
+        /<script>\(function\(\)\{.*postMessage.*<\/script>.*<style>/s,
+      );
+      const tell = (source: unknown, data: unknown) =>
+        window.dispatchEvent(new MessageEvent('message', { data, source: source as Window }));
+
+      // Only the frame of this view is heard, and only what it reports as an error
+      tell(window, { source: 'openui-html-view', error: 'forged', line: 1 });
+      tell(frame.contentWindow, { source: 'other', error: 'noise' });
+      await settle();
+      expect(el().querySelector('.gui-html-error')).toBeNull();
+
+      tell(frame.contentWindow, {
+        source: 'openui-html-view',
+        error: "Unexpected identifier 'antDummy'",
+        line: 12,
+      });
+      tell(frame.contentWindow, { source: 'openui-html-view', error: 'a later one', line: 30 });
+      await settle();
+      expect(text('.gui-html-error span')[0]).toBe(
+        "Le script de la page s'est arrêté : Unexpected identifier 'antDummy' (ligne 12)",
+      );
+
+      button('Demander une correction').click();
+      await settle();
+      expect(sent).toEqual([
+        "La page « Nuancier » ne fonctionne pas : son script s'arrête sur l'erreur « Unexpected identifier 'antDummy' (ligne 12) ». Corrige-la et redonne la page entière.",
+      ]);
+
+      // Drawn anew, the page starts with a clean slate
+      button('Recharger').click();
+      await settle();
+      expect(el().querySelector('.gui-html-error')).toBeNull();
+    });
   });
 
   describe('Wizard', () => {
